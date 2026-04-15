@@ -12,7 +12,9 @@ drop policy if exists "donations_select_admin" on public.donations;
 drop policy if exists "donations_insert_comercio" on public.donations;
 drop policy if exists "donations_update_comercio" on public.donations;
 drop policy if exists "donations_update_ong_request" on public.donations;
+drop policy if exists "donations_update_ong_collect" on public.donations;
 drop policy if exists "donations_update_admin" on public.donations;
+drop policy if exists "donations_delete_comercio" on public.donations;
 
 drop policy if exists "organizations_select_self" on public.organizations;
 drop policy if exists "organizations_select_admin" on public.organizations;
@@ -26,6 +28,10 @@ drop policy if exists "org_public_select_all" on public.organizations_public;
 drop policy if exists "donation_requests_select_ong" on public.donation_requests;
 drop policy if exists "donation_requests_insert_ong" on public.donation_requests;
 
+drop policy if exists "donation_certificates_select_public" on public.donation_certificates;
+drop policy if exists "donation_certificates_select_related" on public.donation_certificates;
+drop policy if exists "donation_certificates_insert_ong" on public.donation_certificates;
+
 drop trigger if exists on_auth_user_created on auth.users;
 drop function if exists public.handle_new_auth_user();
 drop function if exists public.is_admin();
@@ -35,6 +41,7 @@ alter table public.donations enable row level security;
 alter table public.organizations enable row level security;
 alter table public.organizations_public enable row level security;
 alter table public.donation_requests enable row level security;
+alter table public.donation_certificates enable row level security;
 
 create or replace function public.is_admin()
 returns boolean
@@ -137,10 +144,30 @@ using (
 )
 with check (status = 'pending');
 
+create policy "donations_update_ong_collect" on public.donations
+for update
+using (
+  status = 'pending'
+  and exists (
+    select 1
+    from public.donation_requests r
+    where r.donation_id = donations.id
+      and r.ong_user_id = auth.uid()
+  )
+)
+with check (
+  status = 'collected'
+  and collected_at is not null
+);
+
 create policy "donations_update_admin" on public.donations
 for update
 using (public.is_admin())
 with check (public.is_admin());
+
+create policy "donations_delete_comercio" on public.donations
+for delete
+using (user_id = auth.uid() and status = 'available');
 
 -- Organizations (full contact)
 create policy "organizations_select_self" on public.organizations
@@ -190,6 +217,50 @@ using (ong_user_id = auth.uid());
 create policy "donation_requests_insert_ong" on public.donation_requests
 for insert
 with check (ong_user_id = auth.uid());
+
+-- Donation certificates (verification records)
+create policy "donation_certificates_select_related" on public.donation_certificates
+for select
+using (
+  auth.uid() = commerce_user_id
+  or auth.uid() = ong_user_id
+  or public.is_admin()
+);
+
+create policy "donation_certificates_insert_ong" on public.donation_certificates
+for insert
+with check (
+  ong_user_id = auth.uid()
+  and exists (
+    select 1
+    from public.donation_requests r
+    where r.donation_id = donation_certificates.donation_id
+      and r.ong_user_id = auth.uid()
+  )
+);
+
+-- Storage: signatures bucket (owner-only)
+drop policy if exists "signatures_insert_own" on storage.objects;
+drop policy if exists "signatures_select_own" on storage.objects;
+drop policy if exists "signatures_update_own" on storage.objects;
+drop policy if exists "signatures_delete_own" on storage.objects;
+
+create policy "signatures_insert_own" on storage.objects
+for insert to authenticated
+with check (bucket_id = 'signatures' and owner = auth.uid());
+
+create policy "signatures_select_own" on storage.objects
+for select to authenticated
+using (bucket_id = 'signatures' and owner = auth.uid());
+
+create policy "signatures_update_own" on storage.objects
+for update to authenticated
+using (bucket_id = 'signatures' and owner = auth.uid())
+with check (bucket_id = 'signatures' and owner = auth.uid());
+
+create policy "signatures_delete_own" on storage.objects
+for delete to authenticated
+using (bucket_id = 'signatures' and owner = auth.uid());
 
 -- Auto-create profile from auth.users
 create or replace function public.handle_new_auth_user()

@@ -19,13 +19,13 @@ export default async function LoginPage({
   }
 
   return (
-    <div className="grid w-full gap-10 lg:grid-cols-[1.1fr_0.9fr]">
-      <div className="flex flex-col justify-between rounded-[32px] bg-slate-900 p-10 text-white shadow-[0_40px_120px_rgba(15,23,42,0.4)]">
+    <div className="grid w-full gap-6 sm:gap-10 lg:grid-cols-[1.1fr_0.9fr]">
+      <div className="flex flex-col justify-between rounded-[32px] bg-slate-900 p-6 text-white shadow-[0_40px_120px_rgba(15,23,42,0.4)] animate-fade-up sm:p-10">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.4em] text-emerald-300">
             Plataforma SocialFood
           </p>
-          <h2 className="mt-6 text-4xl font-semibold leading-tight">
+          <h2 className="mt-4 text-3xl font-semibold leading-tight sm:mt-6 sm:text-4xl">
             Redistribucion de excedentes con trazabilidad y control.
           </h2>
           <p className="mt-4 text-base text-slate-200">
@@ -33,7 +33,7 @@ export default async function LoginPage({
             notificaciones y metricas de impacto en tiempo real.
           </p>
         </div>
-        <div className="mt-12 grid gap-4 text-sm text-slate-200">
+        <div className="mt-8 grid gap-4 text-sm text-slate-200 sm:mt-12">
           <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
             <p className="font-semibold">Comercio</p>
             <p className="text-xs text-slate-300">
@@ -55,9 +55,9 @@ export default async function LoginPage({
         </div>
       </div>
       <div className="flex items-center justify-center">
-        <div className="w-full max-w-lg space-y-4">
+        <div className="w-full max-w-lg space-y-4 animate-fade-up-delay-1">
           {confirmed && (
-            <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+            <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 notice-animate">
               Email confirmado. Ya puedes iniciar sesion.
             </div>
           )}

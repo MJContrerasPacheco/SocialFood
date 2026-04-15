@@ -17,14 +17,14 @@ export default function DeniedPage() {
         <form action={signOut}>
           <button
             type="submit"
-            className="rounded-full border border-slate-200 px-5 py-2 text-sm font-semibold text-slate-700"
+            className="rounded-full border border-slate-200 px-5 py-2 text-sm font-semibold text-slate-700 btn-glow-soft"
           >
             Salir
           </button>
         </form>
         <Link
           href="/login"
-          className="rounded-full bg-slate-900 px-5 py-2 text-sm font-semibold text-white"
+          className="btn-animate btn-glow-dark rounded-full bg-slate-900 px-5 py-2 text-sm font-semibold text-white"
         >
           Volver al login
         </Link>

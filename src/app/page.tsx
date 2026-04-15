@@ -1,13 +1,19 @@
 import Link from "next/link";
 
 export default function Home() {
+  const cardAnimations = [
+    "animate-fade-up-delay-1",
+    "animate-fade-up-delay-2",
+    "animate-fade-up-delay-3",
+  ];
+
   return (
     <div className="relative min-h-screen overflow-hidden bg-[radial-gradient(circle_at_top,_rgba(16,185,129,0.12),_transparent_55%),radial-gradient(circle_at_left,_rgba(14,116,144,0.14),_transparent_40%),linear-gradient(180deg,_#f8fafc,_#eff6ff)]">
-      <div className="pointer-events-none absolute -left-10 top-20 h-40 w-40 rounded-full bg-emerald-300/20 blur-3xl" />
-      <div className="pointer-events-none absolute right-10 top-12 h-56 w-56 rounded-full bg-cyan-300/20 blur-3xl" />
+      <div className="pointer-events-none absolute -left-10 top-20 h-40 w-40 rounded-full bg-emerald-300/20 blur-3xl animate-float" />
+      <div className="pointer-events-none absolute right-10 top-12 h-56 w-56 rounded-full bg-cyan-300/20 blur-3xl animate-float-delay" />
 
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-16 px-6 py-12">
-        <header className="flex flex-wrap items-center justify-between gap-6">
+        <header className="flex flex-wrap items-center justify-between gap-6 animate-fade-up">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.4em] text-emerald-600">
               SocialFood
@@ -18,7 +24,7 @@ export default function Home() {
           </div>
           <Link
             href="/login"
-            className="rounded-full bg-slate-900 px-5 py-2 text-sm font-semibold text-white shadow-lg shadow-slate-900/20"
+            className="btn-animate btn-glow-dark rounded-full bg-slate-900 px-5 py-2 text-sm font-semibold text-white shadow-lg shadow-slate-900/20"
           >
             Iniciar sesion
           </Link>
@@ -39,13 +45,13 @@ export default function Home() {
             <div className="flex flex-wrap gap-3 animate-fade-up-delay-2">
               <Link
                 href="/login"
-                className="rounded-full bg-emerald-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-200/60"
+                className="btn-animate btn-glow rounded-full bg-emerald-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-slate-900/10"
               >
                 Empezar ahora
               </Link>
               <Link
                 href="/login"
-                className="rounded-full border border-slate-200 bg-white px-6 py-3 text-sm font-semibold text-slate-700"
+                className="btn-animate btn-glow-soft rounded-full border border-slate-200 bg-white px-6 py-3 text-sm font-semibold text-slate-700"
               >
                 Ver paneles
               </Link>
@@ -66,10 +72,10 @@ export default function Home() {
                 title: "Impacto medible",
                 text: "Metricas de kg salvados, solicitudes y beneficiarios.",
               },
-            ].map((item) => (
+            ].map((item, index) => (
               <div
                 key={item.title}
-                className="rounded-3xl border border-white/70 bg-white/80 p-6 shadow-[0_20px_60px_rgba(15,23,42,0.12)] backdrop-blur"
+                className={`rounded-3xl border border-white/70 bg-white/80 p-6 shadow-[0_20px_60px_rgba(15,23,42,0.12)] backdrop-blur animate-fade-up card-animate ${cardAnimations[index] ?? ""}`}
               >
                 <h3 className="text-lg font-semibold text-slate-900">
                   {item.title}
@@ -80,9 +86,9 @@ export default function Home() {
           </section>
         </main>
 
-        <section className="grid gap-6 rounded-[32px] border border-white/70 bg-white/70 p-8 shadow-[0_30px_90px_rgba(15,23,42,0.15)] backdrop-blur lg:grid-cols-3">
+        <section className="grid gap-6 rounded-[32px] border border-white/70 bg-white/70 p-8 shadow-[0_30px_90px_rgba(15,23,42,0.15)] backdrop-blur lg:grid-cols-3 animate-fade-up-delay-2">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.25em] text-emerald-600">
+            <p className="text-xs font-semibold uppercase tracking-[0.25em] text-emerald-600 badge-animate">
               Comercio
             </p>
             <p className="mt-3 text-sm text-slate-600">
@@ -90,7 +96,7 @@ export default function Home() {
             </p>
           </div>
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.25em] text-emerald-600">
+            <p className="text-xs font-semibold uppercase tracking-[0.25em] text-emerald-600 badge-animate">
               ONG
             </p>
             <p className="mt-3 text-sm text-slate-600">
@@ -98,7 +104,7 @@ export default function Home() {
             </p>
           </div>
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.25em] text-emerald-600">
+            <p className="text-xs font-semibold uppercase tracking-[0.25em] text-emerald-600 badge-animate">
               Administracion
             </p>
             <p className="mt-3 text-sm text-slate-600">

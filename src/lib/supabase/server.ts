@@ -26,7 +26,11 @@ export async function createServerSupabase() {
       },
       setAll(cookiesToSet: CookieToSet[]) {
         cookiesToSet.forEach(({ name, value, options }) => {
-          cookieStore.set(name, value, options);
+          try {
+            cookieStore.set(name, value, options);
+          } catch {
+            // Cookie mutations are only allowed in Server Actions/Route Handlers.
+          }
         });
       },
     },

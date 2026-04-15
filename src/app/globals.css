@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
 
 :root {
   --background: #f8fafc;
@@ -25,11 +26,80 @@
   }
 }
 
+html {
+  overflow-x: hidden;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-body), system-ui, sans-serif;
   min-height: 100vh;
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
+.leaflet-container {
+  background: #e2e8f0;
+  height: 100%;
+  width: 100%;
+  position: relative;
+  overflow: hidden;
+}
+
+.leaflet-container img {
+  max-width: none !important;
+  max-height: none !important;
+}
+
+.leaflet-container .leaflet-tile,
+.leaflet-container .leaflet-tile-container img {
+  max-width: none !important;
+  max-height: none !important;
+}
+
+.leaflet-pane,
+.leaflet-tile-pane,
+.leaflet-overlay-pane,
+.leaflet-shadow-pane,
+.leaflet-marker-pane,
+.leaflet-tooltip-pane,
+.leaflet-popup-pane {
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+
+.leaflet-tile {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 256px;
+  height: 256px;
+}
+
+.leaflet-tile-pane {
+  z-index: 200;
+}
+
+.leaflet-overlay-pane {
+  z-index: 400;
+}
+
+.leaflet-shadow-pane {
+  z-index: 500;
+}
+
+.leaflet-marker-pane {
+  z-index: 600;
+}
+
+.leaflet-tooltip-pane {
+  z-index: 650;
+}
+
+.leaflet-popup-pane {
+  z-index: 700;
 }
 
 h1,
@@ -65,4 +135,196 @@ h3 {
 .animate-fade-up-delay-2 {
   animation: fade-up 0.6s ease-out both;
   animation-delay: 0.2s;
+}
+
+.animate-fade-up-delay-3 {
+  animation: fade-up 0.6s ease-out both;
+  animation-delay: 0.3s;
+}
+
+.animate-fade-up-delay-4 {
+  animation: fade-up 0.6s ease-out both;
+  animation-delay: 0.45s;
+}
+
+@keyframes float-soft {
+  0% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-12px);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
+.animate-float {
+  animation: float-soft 7s ease-in-out infinite;
+}
+
+.animate-float-delay {
+  animation: float-soft 9s ease-in-out infinite;
+  animation-delay: -1.5s;
+}
+
+.card-animate {
+  transition: transform 180ms ease, border-color 180ms ease;
+  will-change: transform;
+}
+
+.card-animate:hover {
+  transform: translateY(-2px);
+  border-color: rgba(16, 185, 129, 0.25);
+}
+
+@keyframes notice-pop {
+  0% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.notice-animate {
+  animation: notice-pop 0.35s ease-out both;
+}
+
+.btn-glow,
+.btn-glow-dark {
+  transition: box-shadow 180ms ease, transform 160ms ease, filter 160ms ease;
+}
+
+.btn-glow:hover {
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.14),
+    0 6px 12px rgba(15, 23, 42, 0.08);
+}
+
+.btn-glow-dark:hover {
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.2),
+    0 6px 12px rgba(15, 23, 42, 0.12);
+}
+
+.btn-glow-soft {
+  transition: box-shadow 180ms ease, transform 160ms ease;
+}
+
+.btn-glow-soft:hover {
+  box-shadow: 0 10px 18px rgba(15, 23, 42, 0.08);
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+input,
+select,
+textarea {
+  transition: border-color 160ms ease, box-shadow 160ms ease,
+    background-color 160ms ease, transform 160ms ease;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.18);
+}
+
+.badge-animate {
+  transition: transform 160ms ease, box-shadow 160ms ease;
+  will-change: transform;
+}
+
+.badge-animate:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.08);
+}
+
+button,
+.btn-animate {
+  transition: transform 160ms ease, filter 160ms ease;
+  will-change: transform;
+}
+
+button:hover,
+.btn-animate:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.03);
+}
+
+button:active,
+.btn-animate:active {
+  transform: translateY(0);
+}
+
+button:disabled,
+.btn-animate:disabled {
+  transform: none;
+  filter: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-up,
+  .animate-fade-up-delay-1,
+  .animate-fade-up-delay-2,
+  .animate-fade-up-delay-3,
+  .animate-fade-up-delay-4,
+  .animate-float,
+  .animate-float-delay {
+    animation: none;
+  }
+
+  button,
+  .btn-animate {
+    transition: none;
+  }
+
+  .card-animate {
+    transition: none;
+  }
+
+  input,
+  select,
+  textarea {
+    transition: none;
+  }
+
+  .badge-animate {
+    transition: none;
+  }
+
+  .notice-animate {
+    animation: none;
+  }
+
+  .btn-glow,
+  .btn-glow-dark,
+  .btn-glow-soft {
+    transition: none;
+    box-shadow: none;
+  }
+
+  button:hover,
+  .btn-animate:hover {
+    transform: none;
+    filter: none;
+  }
+
+  .card-animate:hover {
+    transform: none;
+  }
+
+  .badge-animate:hover {
+    transform: none;
+    box-shadow: none;
+  }
 }

@@ -11,7 +11,7 @@ export default function CreateUserForm() {
   return (
     <form
       action={action}
-      className="grid gap-4 rounded-3xl border border-white/60 bg-white/80 p-6 shadow-[0_20px_60px_rgba(15,23,42,0.12)] backdrop-blur"
+      className="grid gap-4 rounded-3xl border border-white/60 bg-white/80 p-4 shadow-[0_20px_60px_rgba(15,23,42,0.12)] backdrop-blur animate-fade-up-delay-1 sm:p-6"
     >
       <div>
         <h2 className="text-lg font-semibold text-slate-900">
@@ -21,7 +21,7 @@ export default function CreateUserForm() {
           Alta directa con rol y acceso aprobado.
         </p>
       </div>
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid gap-3 md:grid-cols-2">
         <div className="space-y-2">
           <label className="text-sm font-medium text-slate-700" htmlFor="nombre">
             Nombre
@@ -46,7 +46,7 @@ export default function CreateUserForm() {
           />
         </div>
       </div>
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid gap-3 md:grid-cols-2">
         <div className="space-y-2">
           <label
             className="text-sm font-medium text-slate-700"
@@ -83,19 +83,19 @@ export default function CreateUserForm() {
         </div>
       </div>
       {state?.error && (
-        <p className="rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-600">
+        <p className="rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-600 notice-animate">
           {state.error}
         </p>
       )}
       {state?.success && (
-        <p className="rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+        <p className="rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-700 notice-animate">
           {state.success}
         </p>
       )}
       <button
         type="submit"
         disabled={pending}
-        className="w-full rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-slate-900/20 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-70"
+        className="w-full rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-slate-900/20 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-70 btn-glow-dark"
       >
         {pending ? "Creando..." : "Crear usuario"}
       </button>

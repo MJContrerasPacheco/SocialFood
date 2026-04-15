@@ -1,0 +1,15 @@
+export const FOOD_TYPES = [
+  "Pan y bolleria",
+  "Frutas",
+  "Verduras",
+  "Carnes",
+  "Pescado",
+  "Lacteos",
+  "Huevos",
+  "Legumbres",
+  "Cereales",
+  "Comida preparada",
+  "Conservas",
+  "Bebidas",
+  "Otros",
+] as const;

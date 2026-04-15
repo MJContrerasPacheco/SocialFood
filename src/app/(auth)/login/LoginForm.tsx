@@ -48,12 +48,12 @@ export default function LoginForm() {
   };
 
   return (
-    <div className="w-full max-w-lg rounded-3xl border border-white/40 bg-white/80 p-8 shadow-[0_30px_80px_rgba(15,23,42,0.18)] backdrop-blur">
-      <div className="mb-8">
+    <div className="w-full max-w-lg rounded-3xl border border-white/40 bg-white/80 p-6 shadow-[0_30px_80px_rgba(15,23,42,0.18)] backdrop-blur animate-fade-up-delay-2 sm:p-8">
+      <div className="mb-6 sm:mb-8">
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700">
           SocialFood
         </p>
-        <h1 className="mt-3 text-3xl font-semibold text-slate-900">
+        <h1 className="mt-3 text-2xl font-semibold text-slate-900 sm:text-3xl">
           {isLogin ? "Acceso seguro" : "Solicitar acceso"}
         </h1>
         <p className="mt-2 text-sm text-slate-600">
@@ -63,7 +63,7 @@ export default function LoginForm() {
         </p>
       </div>
 
-      <div className="mb-6 grid gap-3 rounded-2xl border border-slate-200 bg-white/70 p-4">
+      <div className="mb-6 grid gap-3 rounded-2xl border border-slate-200 bg-white/70 p-3 sm:p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
             Acceso con Google
@@ -80,7 +80,7 @@ export default function LoginForm() {
           </select>
         </div>
         {oauthError && (
-          <p className="rounded-xl bg-rose-50 px-3 py-2 text-xs text-rose-600">
+          <p className="rounded-xl bg-rose-50 px-3 py-2 text-xs text-rose-600 notice-animate">
             {oauthError}
           </p>
         )}
@@ -88,7 +88,7 @@ export default function LoginForm() {
           type="button"
           onClick={handleGoogleLogin}
           disabled={oauthPending}
-          className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-70"
+          className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-70 btn-glow-soft"
         >
           {oauthPending ? "Conectando..." : "Continuar con Google"}
         </button>
@@ -151,14 +151,14 @@ export default function LoginForm() {
             />
           </div>
           {loginState?.error && (
-            <p className="rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-600">
+            <p className="rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-600 notice-animate">
               {loginState.error}
             </p>
           )}
           <button
             type="submit"
             disabled={loginPending}
-            className="w-full rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-200/60 transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-70"
+            className="w-full rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-slate-900/10 transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-70 btn-glow"
           >
             {loginPending ? "Accediendo..." : "Entrar"}
           </button>
@@ -224,14 +224,14 @@ export default function LoginForm() {
             </select>
           </div>
           {signupState?.error && (
-            <p className="rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-600">
+            <p className="rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-600 notice-animate">
               {signupState.error}
             </p>
           )}
           <button
             type="submit"
             disabled={signupPending}
-            className="w-full rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-slate-900/20 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-70"
+            className="w-full rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-slate-900/20 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-70 btn-glow-dark"
           >
             {signupPending ? "Enviando..." : "Solicitar acceso"}
           </button>

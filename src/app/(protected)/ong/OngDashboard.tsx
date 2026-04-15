@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import OngProfileForm from "./OngProfileForm";
 import OngMap from "./OngMap";
-import { haversineKm } from "@/lib/geo";
+import { haversineKm, hasValidCoordinates, normalizeCoordinate } from "@/lib/geo";
 import { formatDonationStatus } from "@/lib/donations";
 
 type DonationItem = {
@@ -77,21 +77,76 @@ export default function OngDashboard({
     return new Map(requestedDonations.map((donation) => [donation.id, donation]));
   }, [requestedDonations]);
 
-  const ongLat = ongOrganization?.lat ?? null;
-  const ongLng = ongOrganization?.lng ?? null;
+  const ongLat = normalizeCoordinate(ongOrganization?.lat ?? null);
+  const ongLng = normalizeCoordinate(ongOrganization?.lng ?? null);
+  const ongCity = ongOrganization?.city?.toLowerCase() ?? null;
   const ongRegion = ongOrganization?.region?.toLowerCase() ?? null;
+  const defaultScope: "city" | "region" | "all" = ongCity
+    ? "city"
+    : ongRegion
+      ? "region"
+      : "all";
+  const [scopeMode, setScopeMode] = useState<"city" | "region" | "all">(
+    defaultScope
+  );
+  const effectiveScope = useMemo(() => {
+    if (scopeMode === "city" && ongCity) {
+      return "city";
+    }
+    if (scopeMode === "region" && ongRegion) {
+      return "region";
+    }
+    if (scopeMode === "all") {
+      return "all";
+    }
+    if (ongCity) {
+      return "city";
+    }
+    if (ongRegion) {
+      return "region";
+    }
+    return "all";
+  }, [ongCity, ongRegion, scopeMode]);
+  const isRegionLimited = effectiveScope !== "all";
+  const scopeOptions = [
+    { value: "city", label: "Ciudad", enabled: Boolean(ongCity) },
+    { value: "region", label: "Comunidad", enabled: Boolean(ongRegion) },
+    { value: "all", label: "Toda Espana", enabled: true },
+  ] as const;
+  const renderScopeControls = () => (
+    <div className="flex flex-wrap items-center gap-2">
+      {scopeOptions.map((option) => {
+        const isActive = effectiveScope === option.value;
+        return (
+          <button
+            key={option.value}
+            type="button"
+            disabled={!option.enabled}
+            onClick={() => setScopeMode(option.value)}
+            className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
+              isActive
+                ? "border-slate-900 bg-slate-900 text-white"
+                : "border-slate-200 bg-white text-slate-700"
+            } ${option.enabled ? "btn-glow-soft" : "opacity-50 cursor-not-allowed"}`}
+          >
+            {option.value === "city" && ongOrganization?.city
+              ? `Ciudad: ${ongOrganization.city}`
+              : option.value === "region" && ongOrganization?.region
+                ? `Comunidad: ${ongOrganization.region}`
+                : option.label}
+          </button>
+        );
+      })}
+    </div>
+  );
 
   const donationList = useMemo(() => {
     return donations
       .map((donation) => {
         const org = donation.user_id ? orgPublicMap.get(donation.user_id) : null;
         const distanceKm =
-          org &&
-          ongLat !== null &&
-          ongLng !== null &&
-          org.lat !== null &&
-          org.lng !== null
-            ? haversineKm(ongLat, ongLng, org.lat, org.lng)
+          org && hasValidCoordinates(ongLat, ongLng) && hasValidCoordinates(org.lat, org.lng)
+            ? haversineKm(ongLat, ongLng, org.lat as number, org.lng as number)
             : null;
         return { donation, org, distanceKm };
       })
@@ -118,11 +173,23 @@ export default function OngDashboard({
       });
   }, [donations, ongLat, ongLng, ongRegion, orgPublicMap]);
 
+  const visibleDonationList = useMemo(() => {
+    if (!isRegionLimited) {
+      return donationList;
+    }
+    return donationList.filter(
+      (item) =>
+        effectiveScope === "city"
+          ? item.org?.city?.toLowerCase() === ongCity
+          : item.org?.region?.toLowerCase() === ongRegion
+    );
+  }, [donationList, effectiveScope, isRegionLimited, ongCity, ongRegion]);
+
   const requestedDonationIds = useMemo(() => {
     return new Set(requestedDonations.map((donation) => donation.id));
   }, [requestedDonations]);
 
-  const selectedAvailableItem = donationList.find(
+  const selectedAvailableItem = visibleDonationList.find(
     (item) => item.donation.id === selectedDonationId
   );
   const selectedRequestedDonation = selectedDonationId
@@ -144,7 +211,7 @@ export default function OngDashboard({
     const fallbackId =
       initialSelectedDonationId ??
       requestedDonations[0]?.id ??
-      donationList[0]?.donation.id ??
+      visibleDonationList[0]?.donation.id ??
       null;
 
     if (!selectedDonationId) {
@@ -154,7 +221,7 @@ export default function OngDashboard({
       return;
     }
 
-    const existsInAvailable = donationList.some(
+    const existsInAvailable = visibleDonationList.some(
       (item) => item.donation.id === selectedDonationId
     );
     const existsInRequested = requestedDonationIds.has(selectedDonationId);
@@ -163,7 +230,7 @@ export default function OngDashboard({
       setSelectedDonationId(fallbackId);
     }
   }, [
-    donationList,
+    visibleDonationList,
     initialSelectedDonationId,
     requestedDonations,
     requestedDonationIds,
@@ -179,51 +246,95 @@ export default function OngDashboard({
     }
   }, [initialSelectedDonationId, selectedDonationId]);
 
+  const scopedOrgs = useMemo(() => {
+    if (!isRegionLimited) {
+      return orgsPublic;
+    }
+    return orgsPublic.filter(
+      (org) =>
+        effectiveScope === "city"
+          ? org.city?.toLowerCase() === ongCity
+          : org.region?.toLowerCase() === ongRegion
+    );
+  }, [effectiveScope, isRegionLimited, ongCity, ongRegion, orgsPublic]);
+
+  const markerOrgs = useMemo(() => {
+    const map = new Map(scopedOrgs.map((org) => [org.user_id, org]));
+    if (selectedOrgPublic && !map.has(selectedOrgPublic.user_id)) {
+      map.set(selectedOrgPublic.user_id, selectedOrgPublic);
+    }
+    return Array.from(map.values());
+  }, [scopedOrgs, selectedOrgPublic]);
+
   const mapMarkers = useMemo(() => {
-    return orgsPublic
-      .filter((org) => org.lat !== null && org.lng !== null)
+    return markerOrgs
+      .filter((org) => hasValidCoordinates(org.lat, org.lng))
       .map((org) => ({
         id: org.user_id,
         title: org.name || "Comercio",
         lat: org.lat as number,
         lng: org.lng as number,
       }));
-  }, [orgsPublic]);
+  }, [markerOrgs]);
+
+  const missingMarkersCount = useMemo(() => {
+    return scopedOrgs.filter((org) => !hasValidCoordinates(org.lat, org.lng))
+      .length;
+  }, [scopedOrgs]);
 
   const selectedMarkerId =
     selectedOrgPublic?.user_id ?? selectedDonation?.user_id ?? null;
 
   return (
-    <div className="grid gap-8">
-      <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+    <div className="grid gap-6 sm:gap-8">
+      <div className="grid gap-4 sm:gap-6 lg:grid-cols-[1.1fr_0.9fr]">
         <OngProfileForm initialValues={ongOrganization ?? undefined} />
-        <div className="rounded-3xl border border-white/60 bg-white/80 p-4 shadow-[0_20px_60px_rgba(15,23,42,0.12)] backdrop-blur">
+        <div className="rounded-3xl border border-white/60 bg-white/80 p-3 shadow-[0_20px_60px_rgba(15,23,42,0.12)] backdrop-blur animate-fade-up-delay-2 sm:p-4">
+          <div className="flex flex-col gap-2 px-2 pb-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+              Alcance
+            </p>
+            {renderScopeControls()}
+          </div>
           <OngMap
             centerLat={ongLat}
             centerLng={ongLng}
             markers={mapMarkers}
             selectedMarkerId={selectedMarkerId}
           />
-          {ongLat === null || ongLng === null ? (
+          {!hasValidCoordinates(ongLat, ongLng) ? (
             <p className="mt-3 text-xs text-slate-500">
               Completa tu ubicacion para ordenar por cercania.
+            </p>
+          ) : null}
+          {missingMarkersCount > 0 ? (
+            <p className="mt-2 text-xs text-slate-500">
+              {missingMarkersCount} comercios no tienen ubicacion confirmada.
             </p>
           ) : null}
         </div>
       </div>
 
-      <section className="rounded-3xl border border-white/60 bg-white/80 p-6 shadow-[0_20px_60px_rgba(15,23,42,0.12)] backdrop-blur">
-        <div className="flex items-center justify-between">
+      <section className="rounded-3xl border border-white/60 bg-white/80 p-4 shadow-[0_20px_60px_rgba(15,23,42,0.12)] backdrop-blur animate-fade-up-delay-3 sm:p-6">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-lg font-semibold text-slate-900">
             Donaciones disponibles
           </h2>
-          <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
-            {donations.length} opciones
-          </span>
+          <div className="flex flex-wrap items-center gap-2">
+            {isRegionLimited ? (
+              <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 badge-animate">
+                {visibleDonationList.length} en tu zona
+              </span>
+            ) : (
+              <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 badge-animate">
+                {visibleDonationList.length} opciones
+              </span>
+            )}
+          </div>
         </div>
-        <div className="mt-4 grid gap-3">
-          {donationList.length > 0 ? (
-            donationList.map(({ donation, org, distanceKm }) => {
+        <div className="mt-4 grid gap-3 sm:gap-4">
+          {visibleDonationList.length > 0 ? (
+            visibleDonationList.map(({ donation, org, distanceKm }, index) => {
               const isSelected = donation.id === selectedDonationId;
               return (
                 <div
@@ -236,11 +347,12 @@ export default function OngDashboard({
                       setSelectedDonationId(donation.id);
                     }
                   }}
-                  className={`grid gap-3 rounded-2xl border p-4 text-sm text-slate-700 sm:grid-cols-[1.4fr_0.6fr_auto] ${
+                  className={`grid gap-3 rounded-2xl border p-4 text-sm text-slate-700 sm:grid-cols-[1.4fr_0.6fr_auto] card-animate animate-fade-up ${
                     isSelected
                       ? "border-emerald-200 bg-emerald-50/60"
                       : "border-slate-100 bg-white"
                   }`}
+                  style={{ animationDelay: `${index * 0.04}s` }}
                 >
                   <div>
                     <p className="font-semibold text-slate-900">
@@ -275,7 +387,7 @@ export default function OngDashboard({
                     <button
                       type="submit"
                       onClick={() => setSelectedDonationId(donation.id)}
-                      className="rounded-full bg-emerald-600 px-4 py-2 text-xs font-semibold text-white"
+                      className="rounded-full bg-emerald-600 px-4 py-2 text-xs font-semibold text-white btn-glow"
                     >
                       Solicitar
                     </button>
@@ -284,14 +396,23 @@ export default function OngDashboard({
               );
             })
           ) : (
-            <p className="text-sm text-slate-500">
-              No hay donaciones disponibles en este momento.
-            </p>
+            <div className="rounded-2xl border border-dashed border-slate-200 bg-white/60 p-6 text-sm text-slate-500">
+              <p>No hay donaciones disponibles en esta zona.</p>
+              {effectiveScope !== "all" ? (
+                <button
+                  type="button"
+                  onClick={() => setScopeMode("all")}
+                  className="mt-3 inline-flex rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 btn-glow-soft"
+                >
+                  Ampliar a toda Espana
+                </button>
+              ) : null}
+            </div>
           )}
         </div>
       </section>
 
-      <section className="rounded-3xl border border-white/60 bg-white/80 p-6 shadow-[0_20px_60px_rgba(15,23,42,0.12)] backdrop-blur">
+      <section className="rounded-3xl border border-white/60 bg-white/80 p-4 shadow-[0_20px_60px_rgba(15,23,42,0.12)] backdrop-blur animate-fade-up-delay-4 sm:p-6">
         <h2 className="text-lg font-semibold text-slate-900">
           Detalle de la donacion
         </h2>
@@ -351,18 +472,18 @@ export default function OngDashboard({
         )}
       </section>
 
-      <section className="rounded-3xl border border-white/60 bg-white/80 p-6 shadow-[0_20px_60px_rgba(15,23,42,0.12)] backdrop-blur">
-        <div className="flex items-center justify-between">
+      <section className="rounded-3xl border border-white/60 bg-white/80 p-4 shadow-[0_20px_60px_rgba(15,23,42,0.12)] backdrop-blur animate-fade-up-delay-4 sm:p-6">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-lg font-semibold text-slate-900">
             Mis solicitudes
           </h2>
-          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600 badge-animate">
             {requestedDonations.length} registros
           </span>
         </div>
         <div className="mt-4 grid gap-3">
           {requestedDonations.length > 0 ? (
-            requestedDonations.map((donation) => {
+            requestedDonations.map((donation, index) => {
               const org = donation.user_id
                 ? requestedOrgMap.get(donation.user_id)
                 : null;
@@ -378,11 +499,12 @@ export default function OngDashboard({
                       setSelectedDonationId(donation.id);
                     }
                   }}
-                  className={`grid gap-3 rounded-2xl border p-4 text-sm text-slate-700 sm:grid-cols-[1.4fr_0.6fr] ${
+                  className={`grid gap-3 rounded-2xl border p-4 text-sm text-slate-700 sm:grid-cols-[1.4fr_0.6fr] card-animate animate-fade-up ${
                     isSelected
                       ? "border-emerald-200 bg-emerald-50/60"
                       : "border-slate-100 bg-white"
                   }`}
+                  style={{ animationDelay: `${index * 0.04}s` }}
                 >
                   <div>
                     <p className="font-semibold text-slate-900">

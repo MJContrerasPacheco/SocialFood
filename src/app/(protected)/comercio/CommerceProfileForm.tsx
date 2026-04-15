@@ -4,6 +4,7 @@ import { useActionState, useRef, useState } from "react";
 import { searchAddresses, type GeocodeResult } from "@/lib/geocoding";
 import { REGIONS } from "@/lib/regions";
 import { updateCommerceProfile, type ProfileState } from "./actions";
+import SignatureField from "@/components/SignatureField";
 
 const initialState: ProfileState = {};
 
@@ -11,6 +12,9 @@ type CommerceProfileFormProps = {
   initialValues?: {
     name?: string | null;
     contact_email?: string | null;
+    tax_id?: string | null;
+    registry_number?: string | null;
+    signature_data_url?: string | null;
     telefono?: string | null;
     whatsapp?: string | null;
     address?: string | null;
@@ -32,21 +36,23 @@ export default function CommerceProfileForm({
   const [geoStatus, setGeoStatus] = useState<string | null>(null);
   const [geoPending, setGeoPending] = useState(false);
   const [suggestions, setSuggestions] = useState<GeocodeResult[]>([]);
+  const [coords, setCoords] = useState(() => {
+    const latValue = Number.isFinite(initialValues?.lat ?? NaN)
+      ? Number(initialValues?.lat).toFixed(6)
+      : "";
+    const lngValue = Number.isFinite(initialValues?.lng ?? NaN)
+      ? Number(initialValues?.lng).toFixed(6)
+      : "";
+    return { lat: latValue, lng: lngValue };
+  });
   const addressRef = useRef<HTMLInputElement>(null);
   const postalCodeRef = useRef<HTMLInputElement>(null);
   const cityRef = useRef<HTMLInputElement>(null);
   const regionRef = useRef<HTMLSelectElement>(null);
   const emailRef = useRef<HTMLInputElement>(null);
-  const latRef = useRef<HTMLInputElement>(null);
-  const lngRef = useRef<HTMLInputElement>(null);
 
   const applyCoordinates = (lat: number, lng: number) => {
-    if (latRef.current) {
-      latRef.current.value = lat.toFixed(6);
-    }
-    if (lngRef.current) {
-      lngRef.current.value = lng.toFixed(6);
-    }
+    setCoords({ lat: lat.toFixed(6), lng: lng.toFixed(6) });
   };
 
   const handleUseLocation = () => {
@@ -95,8 +101,10 @@ export default function CommerceProfileForm({
       if (addressRef.current) {
         addressRef.current.value = result.displayName;
       }
-      setGeoStatus(`Ubicacion encontrada: ${result.displayName}`);
-      setSuggestions([]);
+      setGeoStatus(
+        "Ubicacion aplicada. Si no es correcta, elige otra sugerencia."
+      );
+      setSuggestions(results);
     } else {
       setGeoStatus("Selecciona una ubicacion sugerida.");
       setSuggestions(results);
@@ -116,7 +124,7 @@ export default function CommerceProfileForm({
   return (
     <form
       action={action}
-      className="grid gap-4 rounded-3xl border border-white/60 bg-white/80 p-6 shadow-[0_20px_60px_rgba(15,23,42,0.12)] backdrop-blur"
+      className="grid gap-4 rounded-3xl border border-white/60 bg-white/80 p-4 shadow-[0_20px_60px_rgba(15,23,42,0.12)] backdrop-blur animate-fade-up-delay-2 sm:p-6"
     >
       <div>
         <h2 className="text-lg font-semibold text-slate-900">
@@ -126,7 +134,7 @@ export default function CommerceProfileForm({
           Estos datos se muestran a las ONG cuando solicitan una donacion.
         </p>
       </div>
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid gap-3 md:grid-cols-2">
         <div className="space-y-2">
           <label className="text-sm font-medium text-slate-700" htmlFor="name">
             Nombre del comercio
@@ -155,7 +163,40 @@ export default function CommerceProfileForm({
           />
         </div>
       </div>
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid gap-3 md:grid-cols-2">
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-slate-700" htmlFor="tax_id">
+            CIF/NIF
+          </label>
+          <input
+            id="tax_id"
+            name="tax_id"
+            defaultValue={initialValues?.tax_id ?? ""}
+            className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200"
+          />
+        </div>
+        <div className="space-y-2">
+          <label
+            className="text-sm font-medium text-slate-700"
+            htmlFor="registry_number"
+          >
+            Registro sanitario
+          </label>
+          <input
+            id="registry_number"
+            name="registry_number"
+            defaultValue={initialValues?.registry_number ?? ""}
+            className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200"
+          />
+        </div>
+      </div>
+      <SignatureField
+        name="signature_data_url"
+        label="Firma digital del comercio"
+        helper="Dibuja o sube una firma. Se usara en los certificados de donacion."
+        initialValue={initialValues?.signature_data_url ?? null}
+      />
+      <div className="grid gap-3 md:grid-cols-2">
         <div className="space-y-2">
           <label className="text-sm font-medium text-slate-700" htmlFor="telefono">
             Telefono
@@ -191,7 +232,7 @@ export default function CommerceProfileForm({
           className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200"
         />
       </div>
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 md:grid-cols-3">
         <div className="space-y-2">
           <label className="text-sm font-medium text-slate-700" htmlFor="city">
             Ciudad
@@ -240,26 +281,14 @@ export default function CommerceProfileForm({
           />
         </div>
       </div>
-      <input
-        type="hidden"
-        id="lat"
-        name="lat"
-        defaultValue={initialValues?.lat ?? ""}
-        ref={latRef}
-      />
-      <input
-        type="hidden"
-        id="lng"
-        name="lng"
-        defaultValue={initialValues?.lng ?? ""}
-        ref={lngRef}
-      />
-      <div className="flex flex-wrap gap-3 rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
+      <input type="hidden" id="lat" name="lat" value={coords.lat} readOnly />
+      <input type="hidden" id="lng" name="lng" value={coords.lng} readOnly />
+      <div className="flex flex-col gap-3 rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 sm:flex-row sm:items-center sm:flex-wrap">
         <button
           type="button"
           onClick={handleUseLocation}
           disabled={geoPending}
-          className="rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700"
+          className="w-full rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 btn-glow-soft sm:w-auto"
         >
           Usar mi ubicacion
         </button>
@@ -267,13 +296,18 @@ export default function CommerceProfileForm({
           type="button"
           onClick={handleGeocode}
           disabled={geoPending}
-          className="rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700"
+          className="w-full rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 btn-glow-soft sm:w-auto"
         >
           Buscar por direccion
         </button>
         {geoStatus && (
           <span className="text-xs text-slate-600">{geoStatus}</span>
         )}
+        {coords.lat && coords.lng ? (
+          <span className="text-xs font-semibold text-emerald-600">
+            Coordenadas confirmadas
+          </span>
+        ) : null}
       </div>
       {suggestions.length > 0 && (
         <div className="grid gap-2 rounded-2xl border border-slate-100 bg-white px-4 py-3">
@@ -282,10 +316,10 @@ export default function CommerceProfileForm({
           </p>
           {suggestions.map((result) => (
             <button
-              key={result.displayName}
+              key={`${result.displayName}-${result.lat.toFixed(6)}-${result.lng.toFixed(6)}`}
               type="button"
               onClick={() => handleSelectSuggestion(result)}
-              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-left text-xs text-slate-700 hover:bg-slate-50"
+              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-left text-xs text-slate-700 hover:bg-slate-50 btn-glow-soft"
             >
               {result.displayName}
             </button>
@@ -293,19 +327,19 @@ export default function CommerceProfileForm({
         </div>
       )}
       {state?.error && (
-        <p className="rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-600">
+        <p className="rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-600 notice-animate">
           {state.error}
         </p>
       )}
       {state?.success && (
-        <p className="rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+        <p className="rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-700 notice-animate">
           {state.success}
         </p>
       )}
       <button
         type="submit"
         disabled={pending}
-        className="w-full rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-200/60 transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-70"
+        className="w-full rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-slate-900/10 transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-70 btn-glow"
       >
         {pending ? "Guardando..." : "Guardar datos"}
       </button>
