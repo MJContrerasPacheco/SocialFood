@@ -8,6 +8,7 @@ import type {
   Marker,
   TileLayer,
 } from "leaflet";
+import { useI18n } from "@/components/I18nProvider";
 
 type MarkerItem = {
   id: string;
@@ -29,6 +30,7 @@ export default function OngMap({
   markers,
   selectedMarkerId,
 }: OngMapProps) {
+  const { t } = useI18n();
   const mapRef = useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = useRef<LeafletMap | null>(null);
   const markerLayerRef = useRef<LayerGroup | null>(null);
@@ -56,21 +58,32 @@ export default function OngMap({
       .join("|");
   }, [markers]);
   const centerSignature = `${center[0].toFixed(6)},${center[1].toFixed(6)}`;
+  const markersRef = useRef<MarkerItem[]>(markers);
+  const centerRef = useRef<[number, number]>(center);
 
   useEffect(() => {
+    markersRef.current = markers;
+  }, [markers]);
+
+  useEffect(() => {
+    centerRef.current = center;
+  }, [center]);
+
+  useEffect(() => {
+    const markerMap = markerMapRef.current;
     return () => {
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
       }
       markerLayerRef.current = null;
-      markerMapRef.current.clear();
+      markerMap.clear();
       tileLayerRef.current = null;
       fallbackLayerRef.current = null;
       setTileReady(false);
       setTileError(false);
-          setTileCount(0);
-          setMapReady(false);
+      setTileCount(0);
+      setMapReady(false);
     };
   }, []);
 
@@ -90,6 +103,9 @@ export default function OngMap({
         return;
       }
 
+      const mapCenter = centerRef.current;
+      const markerItems = markersRef.current;
+
       if (!markerIconRef.current) {
         markerIconRef.current = new L.Icon({
           iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
@@ -104,7 +120,7 @@ export default function OngMap({
 
       if (!mapInstanceRef.current) {
         mapInstanceRef.current = L.map(mapRef.current, {
-          center,
+          center: mapCenter,
           zoom: centerLat !== null && centerLng !== null ? 11 : 5,
           scrollWheelZoom: false,
         });
@@ -155,7 +171,7 @@ export default function OngMap({
           tileLayerRef.current = baseLayer;
         }
       } else {
-        mapInstanceRef.current.setView(center);
+        mapInstanceRef.current.setView(mapCenter);
       }
 
       if (!markerLayerRef.current) {
@@ -164,7 +180,7 @@ export default function OngMap({
 
       markerLayerRef.current.clearLayers();
       markerMapRef.current.clear();
-      markers.forEach((item) => {
+      markerItems.forEach((item) => {
         const marker = L.marker([item.lat, item.lng], {
           icon: markerIconRef.current ?? undefined,
         })
@@ -172,16 +188,6 @@ export default function OngMap({
           .bindPopup(item.title);
         markerMapRef.current.set(item.id, marker);
       });
-
-      if (markers.length > 0 && !selectedMarkerId) {
-        const bounds = L.latLngBounds(
-          markers.map((item) => [item.lat, item.lng] as [number, number])
-        );
-        mapInstanceRef.current.fitBounds(bounds, {
-          padding: [24, 24],
-          maxZoom: 13,
-        });
-      }
 
       requestAnimationFrame(() => {
         mapInstanceRef.current?.invalidateSize();
@@ -208,6 +214,30 @@ export default function OngMap({
   }, [centerSignature, markersSignature, centerLat, centerLng]);
 
   useEffect(() => {
+    if (selectedMarkerId || !mapInstanceRef.current) {
+      return;
+    }
+
+    const L = leafletModuleRef.current;
+    if (!L) {
+      return;
+    }
+
+    const markerItems = markersRef.current;
+    if (markerItems.length === 0) {
+      return;
+    }
+
+    const bounds = L.latLngBounds(
+      markerItems.map((item) => [item.lat, item.lng] as [number, number])
+    );
+    mapInstanceRef.current.fitBounds(bounds, {
+      padding: [24, 24],
+      maxZoom: 13,
+    });
+  }, [markersSignature, selectedMarkerId]);
+
+  useEffect(() => {
     if (!selectedMarkerId || !mapInstanceRef.current) {
       return;
     }
@@ -231,15 +261,22 @@ export default function OngMap({
       <div ref={mapRef} className="h-full w-full" />
       {tileError && !tileReady ? (
         <div className="absolute inset-0 flex items-center justify-center bg-white/70 text-xs font-semibold text-slate-600">
-          No se pudo cargar el mapa. Revisa tu conexion.
+          {t.map.loadError}
         </div>
       ) : null}
       <div className="pointer-events-none absolute bottom-3 left-3 z-[1000] rounded-xl border border-slate-200 bg-white/90 px-3 py-2 text-[11px] font-semibold text-slate-700 shadow-sm">
-        <div>Tiles: {tileCount} · {tileReady ? "tiles ok" : "sin tiles"}</div>
-        <div>Mapa: {mapReady ? "ok" : "init"}</div>
-        <div>Markers: {markers.length}</div>
         <div>
-          First: {firstMarker ? `${firstMarker.lat.toFixed(4)}, ${firstMarker.lng.toFixed(4)}` : "--"}
+          {t.map.tilesLabel}: {tileCount} -
+          {tileReady ? ` ${t.map.tilesOk}` : ` ${t.map.tilesMissing}`}
+        </div>
+        <div>
+          {t.map.mapLabel}: {mapReady ? t.map.mapOk : t.map.mapInit}
+        </div>
+        <div>
+          {t.map.markersLabel}: {markers.length}
+        </div>
+        <div>
+          {t.map.firstLabel}: {firstMarker ? `${firstMarker.lat.toFixed(4)}, ${firstMarker.lng.toFixed(4)}` : "--"}
         </div>
       </div>
     </div>

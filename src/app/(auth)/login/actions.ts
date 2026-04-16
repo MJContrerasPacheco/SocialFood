@@ -3,6 +3,9 @@
 import { z } from "zod";
 import { redirect } from "next/navigation";
 import { USER_TABLE } from "@/lib/constants";
+import { ensureUserProfile } from "@/lib/auth";
+import { isPlanTier } from "@/lib/plans";
+import { isPlanAllowlisted } from "@/lib/plan-access";
 import { createAdminSupabase } from "@/lib/supabase/admin";
 import { createServerSupabase } from "@/lib/supabase/server";
 
@@ -29,6 +32,8 @@ export async function signIn(_: AuthState, formData: FormData) {
     email: formData.get("email"),
     password: formData.get("password"),
   });
+
+  const selectedPlan = String(formData.get("plan") || "");
 
   if (!parsed.success) {
     return { error: "Datos invalidos" } satisfies AuthState;
@@ -57,9 +62,21 @@ export async function signIn(_: AuthState, formData: FormData) {
 
   let { data: profile } = await supabase
     .from(USER_TABLE)
-    .select("role")
+    .select("role, plan_tier, stripe_subscription_status")
     .eq("id", user.id)
     .single();
+
+  if (!profile || !profile.role) {
+    const ensuredProfile = await ensureUserProfile({
+      id: user.id,
+      email: user.email,
+      user_metadata: user.user_metadata,
+    });
+
+    if (ensuredProfile) {
+      profile = ensuredProfile;
+    }
+  }
 
   if (!profile || !profile.role) {
     const fallbackRole = user.user_metadata?.role;
@@ -78,7 +95,7 @@ export async function signIn(_: AuthState, formData: FormData) {
 
       const { data: refreshedProfile } = await supabase
         .from(USER_TABLE)
-        .select("role")
+        .select("role, plan_tier, stripe_subscription_status")
         .eq("id", user.id)
         .single();
 
@@ -91,6 +108,30 @@ export async function signIn(_: AuthState, formData: FormData) {
       error:
         "Perfil no creado. Ejecuta el SQL de trigger en Supabase o agrega SUPABASE_SERVICE_ROLE_KEY.",
     } satisfies AuthState;
+  }
+
+  if (
+    profile.role === "comercio" &&
+    isPlanTier(selectedPlan) &&
+    isPlanAllowlisted({
+      id: user.id,
+      email: user.email,
+      plan_tier: profile.plan_tier ?? null,
+      stripe_subscription_status: profile.stripe_subscription_status ?? null,
+    })
+  ) {
+    await supabase
+      .from(USER_TABLE)
+      .update({ plan_tier: selectedPlan })
+      .eq("id", user.id);
+
+    redirect("/comercio");
+  }
+
+  if (profile.role === "comercio") {
+    if (isPlanTier(selectedPlan) && selectedPlan !== "free") {
+      redirect(`/comercio/planes?plan=${selectedPlan}`);
+    }
   }
 
   redirect(`/${profile.role}`);

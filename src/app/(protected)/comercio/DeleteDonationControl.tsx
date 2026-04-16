@@ -3,12 +3,14 @@
 import { useState } from "react";
 import { useFormStatus } from "react-dom";
 import { deleteDonation } from "./actions";
+import { useI18n } from "@/components/I18nProvider";
 
 type DeleteDonationControlProps = {
   donationId: string;
 };
 
 function DeleteSubmitButton() {
+  const { t } = useI18n();
   const { pending } = useFormStatus();
 
   return (
@@ -17,7 +19,7 @@ function DeleteSubmitButton() {
       disabled={pending}
       className="w-full rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-600 btn-glow-soft disabled:cursor-not-allowed disabled:opacity-70"
     >
-      {pending ? "Eliminando..." : "Confirmar eliminar"}
+      {pending ? t.deleteDonation.deleting : t.deleteDonation.confirm}
     </button>
   );
 }
@@ -25,6 +27,7 @@ function DeleteSubmitButton() {
 export default function DeleteDonationControl({
   donationId,
 }: DeleteDonationControlProps) {
+  const { t } = useI18n();
   const [confirming, setConfirming] = useState(false);
 
   if (!confirming) {
@@ -34,7 +37,7 @@ export default function DeleteDonationControl({
         onClick={() => setConfirming(true)}
         className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-600 btn-glow-soft"
       >
-        Eliminar
+        {t.deleteDonation.delete}
       </button>
     );
   }
@@ -50,7 +53,7 @@ export default function DeleteDonationControl({
         onClick={() => setConfirming(false)}
         className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600 btn-glow-soft"
       >
-        Cancelar
+        {t.deleteDonation.cancel}
       </button>
     </div>
   );

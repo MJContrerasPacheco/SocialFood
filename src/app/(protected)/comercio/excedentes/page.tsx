@@ -1,9 +1,13 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { DONACIONES_TABLE } from "@/lib/constants";
 import { requireApprovedRole } from "@/lib/auth";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { formatDonationStatus } from "@/lib/donations";
 import { FOOD_TYPES } from "@/lib/food-types";
+import { getPlanAccess } from "@/lib/plans";
+import { getEffectivePlanForProfile } from "@/lib/plan-access";
+import { getLocaleFromCookies, getTranslations } from "@/lib/i18n";
 import CreateDonationForm from "../CreateDonationForm";
 import DeleteDonationControl from "../DeleteDonationControl";
 import { markDonationCollected } from "../actions";
@@ -36,8 +40,34 @@ export default async function ExcedentesPage({
 }: {
   searchParams?: Promise<SearchParams>;
 }) {
-  const { user } = await requireApprovedRole("comercio");
+  const { user, profile } = await requireApprovedRole("comercio");
   const supabase = await createServerSupabase();
+  const cookieStore = await cookies();
+  const t = getTranslations(getLocaleFromCookies(cookieStore));
+  const effectivePlan = getEffectivePlanForProfile(profile);
+  const planAccess = getPlanAccess(effectivePlan);
+
+  const getCategoryLabel = (value?: string | null) => {
+    const trimmed = value?.trim() ?? "";
+    if (!trimmed) {
+      return t.common.noCategory;
+    }
+    return t.foodTypes[trimmed as keyof typeof t.foodTypes] ?? trimmed;
+  };
+
+  const storageLabels = {
+    fresco: t.storage.options.fresco,
+    refrigerado: t.storage.options.refrigerado,
+    congelado: t.storage.options.congelado,
+    seco: t.storage.options.seco,
+  } as const;
+
+  const getStorageLabel = (value?: string | null) => {
+    if (!value) {
+      return null;
+    }
+    return storageLabels[value as keyof typeof storageLabels] ?? value;
+  };
 
   const resolvedParams = (await searchParams) ?? {};
   const getParam = (key: keyof SearchParams) => {
@@ -92,24 +122,23 @@ export default async function ExcedentesPage({
     <div className="grid gap-6 sm:gap-8">
       <section className="rounded-3xl border border-white/60 bg-white/80 p-4 shadow-[0_20px_60px_rgba(15,23,42,0.12)] backdrop-blur animate-fade-up sm:p-6">
         <p className="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-600">
-          Excedentes
+          {t.commerce.excedentes.panelTag}
         </p>
         <h1 className="mt-3 text-xl font-semibold text-slate-900 sm:text-2xl">
-          Publica excedentes detallados
+          {t.commerce.excedentes.title}
         </h1>
         <p className="mt-2 text-sm text-slate-600">
-          Describe el tipo de alimento, estado y ventana de recogida para
-          facilitar la coordinacion con las ONG.
+          {t.commerce.excedentes.subtitle}
         </p>
       </section>
 
       <section className="rounded-3xl border border-white/60 bg-white/80 p-4 shadow-[0_20px_60px_rgba(15,23,42,0.12)] backdrop-blur">
         <form
           method="get"
-          className="grid gap-3 text-xs text-slate-600 sm:grid-cols-2 lg:grid-cols-[repeat(4,minmax(0,1fr))_auto_auto]"
+          className="grid items-end gap-3 text-xs text-slate-600 sm:grid-cols-2 lg:grid-cols-[repeat(4,minmax(0,1fr))_auto_auto]"
         >
           <label className="grid gap-2">
-            Desde
+            {t.common.from}
             <input
               type="date"
               name="from"
@@ -118,7 +147,7 @@ export default async function ExcedentesPage({
             />
           </label>
           <label className="grid gap-2">
-            Hasta
+            {t.common.to}
             <input
               type="date"
               name="to"
@@ -127,59 +156,59 @@ export default async function ExcedentesPage({
             />
           </label>
           <label className="grid gap-2">
-            Categoria
+            {t.common.category}
             <select
               name="category"
               defaultValue={categoryValue}
               className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900"
             >
-              <option value="">Todas</option>
+              <option value="">{t.common.allFeminine}</option>
               {FOOD_TYPES.map((type) => (
                 <option key={type} value={type}>
-                  {type}
+                  {t.foodTypes[type] ?? type}
                 </option>
               ))}
-              <option value="Sin categoria">Sin categoria</option>
+              <option value="Sin categoria">{t.common.noCategory}</option>
             </select>
           </label>
           <label className="grid gap-2">
-            Estado
+            {t.common.status}
             <select
               name="status"
               defaultValue={statusValue}
               className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900"
             >
-              <option value="">Todos</option>
-              <option value="available">Disponible</option>
-              <option value="pending">Pendiente</option>
-              <option value="collected">Recogida</option>
+              <option value="">{t.common.all}</option>
+              <option value="available">{t.status.available}</option>
+              <option value="pending">{t.status.pending}</option>
+              <option value="collected">{t.status.collected}</option>
             </select>
           </label>
           <label className="grid gap-2">
-            Ordenar
+            {t.common.sort}
             <select
               name="sort"
               defaultValue={sortValue}
               className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900"
             >
-              <option value="created_desc">Mas recientes</option>
-              <option value="created_asc">Mas antiguas</option>
-              <option value="kg_desc">Mas kg</option>
-              <option value="kg_asc">Menos kg</option>
-              <option value="title_asc">Titulo A-Z</option>
+              <option value="created_desc">{t.commerce.excedentes.sorting.recent}</option>
+              <option value="created_asc">{t.commerce.excedentes.sorting.oldest}</option>
+              <option value="kg_desc">{t.commerce.excedentes.sorting.mostKg}</option>
+              <option value="kg_asc">{t.commerce.excedentes.sorting.leastKg}</option>
+              <option value="title_asc">{t.commerce.excedentes.sorting.titleAsc}</option>
             </select>
           </label>
           <button
             type="submit"
-            className="w-full rounded-full border border-slate-200 bg-slate-900 px-4 py-2 text-xs font-semibold text-white btn-glow-dark sm:justify-self-end sm:w-auto"
+            className="h-10 w-full rounded-full border border-slate-200 bg-slate-900 px-5 text-sm font-semibold text-white btn-glow-dark sm:justify-self-end sm:w-auto"
           >
-            Aplicar filtros
+            {t.common.applyFilters}
           </button>
           <Link
             href="/comercio/excedentes"
-            className="w-full rounded-full border border-slate-200 bg-white px-4 py-2 text-center text-xs font-semibold text-slate-700 btn-glow-soft sm:justify-self-end sm:w-auto"
+            className="inline-flex h-10 w-full items-center justify-center rounded-full border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700 btn-glow-soft sm:justify-self-end sm:w-auto"
           >
-            Limpiar
+            {t.common.clear}
           </Link>
         </form>
       </section>
@@ -189,25 +218,31 @@ export default async function ExcedentesPage({
       <section className="rounded-3xl border border-white/60 bg-white/80 p-4 shadow-[0_20px_60px_rgba(15,23,42,0.12)] backdrop-blur animate-fade-up-delay-2 sm:p-6">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-lg font-semibold text-slate-900">
-            Donaciones recientes
+            {t.commerce.excedentes.recentTitle}
           </h2>
           <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 badge-animate">
-            {donaciones?.length ?? 0} registros
+            {donaciones?.length ?? 0} {t.commerce.excedentes.recordsLabel}
           </span>
         </div>
         <div className="mt-4 grid gap-3 sm:gap-4">
           {donations.length > 0 ? (
             donations.map((donacion, index) => {
               const detailChips = [
-                donacion.category ? `Tipo: ${donacion.category}` : null,
-                donacion.storage ? `Conservacion: ${donacion.storage}` : null,
+                donacion.category
+                  ? `${t.commerce.excedentes.details.type}: ${getCategoryLabel(donacion.category)}`
+                  : null,
+                donacion.storage
+                  ? `${t.commerce.excedentes.details.storage}: ${getStorageLabel(donacion.storage)}`
+                  : null,
                 donacion.expires_at
-                  ? `Caducidad: ${donacion.expires_at}`
+                  ? `${t.commerce.excedentes.details.expiry}: ${donacion.expires_at}`
                   : null,
                 donacion.pickup_window
-                  ? `Recogida: ${donacion.pickup_window}`
+                  ? `${t.commerce.excedentes.details.pickup}: ${donacion.pickup_window}`
                   : null,
-                donacion.allergens ? `Alergenos: ${donacion.allergens}` : null,
+                donacion.allergens
+                  ? `${t.commerce.excedentes.details.allergens}: ${donacion.allergens}`
+                  : null,
               ].filter(Boolean) as string[];
 
               return (
@@ -239,32 +274,32 @@ export default async function ExcedentesPage({
                     ) : null}
                     {donacion.notes ? (
                       <p className="mt-2 text-xs text-slate-500">
-                        Notas: {donacion.notes}
+                        {t.commerce.excedentes.details.notes}: {donacion.notes}
                       </p>
                     ) : null}
                     <p className="mt-2 text-xs text-slate-500">
-                      Publicado: {donacion.created_at?.slice(0, 10)}
+                      {t.commerce.excedentes.details.published}: {donacion.created_at?.slice(0, 10)}
                     </p>
                   </div>
                   <div>
-                    <p className="text-xs uppercase text-slate-400">Cantidad</p>
+                    <p className="text-xs uppercase text-slate-400">{t.common.quantity}</p>
                     <p className="font-semibold">{donacion.kg} kg</p>
                   </div>
                   <div>
-                    <p className="text-xs uppercase text-slate-400">Estado</p>
+                    <p className="text-xs uppercase text-slate-400">{t.common.status}</p>
                     <p className="font-semibold">
-                      {formatDonationStatus(donacion.status)}
+                      {formatDonationStatus(donacion.status, t.status)}
                     </p>
                   </div>
                   <div>
-                    <p className="text-xs uppercase text-slate-400">Accion</p>
+                    <p className="text-xs uppercase text-slate-400">{t.common.action}</p>
                     {donacion.status === "available" ? (
                       <div className="flex flex-col gap-2">
                         <Link
                           href={`/comercio/excedentes/${donacion.id}/editar`}
                           className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700 btn-glow-soft"
                         >
-                          Editar
+                          {t.common.edit}
                         </Link>
                         <DeleteDonationControl donationId={donacion.id} />
                       </div>
@@ -279,16 +314,34 @@ export default async function ExcedentesPage({
                           type="submit"
                           className="rounded-full bg-slate-900 px-3 py-1 text-xs font-semibold text-white btn-glow-dark"
                         >
-                          Marcar recogida
+                          {t.commerce.excedentes.markCollected}
                         </button>
                       </form>
                     ) : donacion.status === "collected" ? (
-                      <a
-                        href={`/comercio/excedentes/${donacion.id}/certificado`}
-                        className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 btn-glow-soft"
-                      >
-                        Descargar certificado
-                      </a>
+                      planAccess.reports ? (
+                        <a
+                          href={`/comercio/excedentes/${donacion.id}/certificado`}
+                          className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 btn-glow-soft"
+                        >
+                          {t.commerce.excedentes.downloadCertificate}
+                        </a>
+                      ) : (
+                        <div className="flex flex-col gap-1">
+                          <button
+                            type="button"
+                            disabled
+                            className="rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-[11px] font-semibold text-slate-500"
+                          >
+                            {t.commerce.excedentes.certificateLocked}
+                          </button>
+                          <Link
+                            href="/comercio/planes"
+                            className="text-[11px] font-semibold text-emerald-700"
+                          >
+                            {t.commerce.excedentes.viewPlans}
+                          </Link>
+                        </div>
+                      )
                     ) : (
                       <p className="text-xs text-slate-500">--</p>
                     )}
@@ -298,7 +351,7 @@ export default async function ExcedentesPage({
             })
           ) : (
             <p className="text-sm text-slate-500">
-              Aun no hay donaciones publicadas.
+              {t.commerce.excedentes.empty}
             </p>
           )}
         </div>

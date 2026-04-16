@@ -1,5 +1,13 @@
 -- Schema additions for organizations and donation requests
 
+alter table public.users
+  add column if not exists plan_tier text default 'free',
+  add column if not exists stripe_customer_id text,
+  add column if not exists stripe_subscription_id text,
+  add column if not exists stripe_subscription_status text,
+  add column if not exists stripe_current_period_end timestamp,
+  add column if not exists stripe_price_id text;
+
 create table if not exists public.organizations (
   user_id uuid primary key references public.users(id) on delete cascade,
   role text check (role in ('comercio', 'ong', 'admin')),

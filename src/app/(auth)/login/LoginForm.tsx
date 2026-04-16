@@ -6,7 +6,11 @@ import { signIn, signUp, type AuthState } from "./actions";
 
 const initialState: AuthState = {};
 
-export default function LoginForm() {
+type LoginFormProps = {
+  selectedPlan: "free" | "pro" | "business";
+};
+
+export default function LoginForm({ selectedPlan }: LoginFormProps) {
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [oauthRole, setOauthRole] = useState<"comercio" | "ong">("comercio");
   const [oauthError, setOauthError] = useState<string | null>(null);
@@ -22,6 +26,9 @@ export default function LoginForm() {
 
   const isLogin = mode === "login";
 
+  const planQuery =
+    oauthRole === "comercio" ? `&plan=${selectedPlan}` : "";
+
   const handleGoogleLogin = async () => {
     setOauthError(null);
     setOauthPending(true);
@@ -32,7 +39,7 @@ export default function LoginForm() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${origin}/auth/callback?role=${oauthRole}`,
+          redirectTo: `${origin}/auth/callback?role=${oauthRole}${planQuery}`,
         },
       });
 
@@ -121,6 +128,7 @@ export default function LoginForm() {
 
       {isLogin ? (
         <form action={loginAction} className="space-y-4">
+          <input type="hidden" name="plan" value={selectedPlan} />
           <div className="space-y-2">
             <label className="text-sm font-medium text-slate-700" htmlFor="email">
               Email
@@ -165,6 +173,7 @@ export default function LoginForm() {
         </form>
       ) : (
         <form action={signupAction} className="space-y-4">
+          <input type="hidden" name="plan" value={selectedPlan} />
           <div className="space-y-2">
             <label className="text-sm font-medium text-slate-700" htmlFor="nombre">
               Nombre

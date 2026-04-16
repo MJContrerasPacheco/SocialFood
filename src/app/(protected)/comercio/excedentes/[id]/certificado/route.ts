@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import { PDFDocument, StandardFonts, rgb, type PDFImage } from "pdf-lib";
 import QRCode from "qrcode";
 import crypto from "crypto";
@@ -11,17 +12,20 @@ import {
 import { requireApprovedRole } from "@/lib/auth";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { parseImageDataUrl } from "@/lib/image-data";
+import { getPlanAccess } from "@/lib/plans";
+import { getEffectivePlanForProfile } from "@/lib/plan-access";
+import { getLocaleFromCookies, getTranslations } from "@/lib/i18n";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const formatDate = (value?: string | null) => {
+const formatDate = (value: string | null | undefined, fallback: string) => {
   if (!value) {
-    return "No informado";
+    return fallback;
   }
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
-    return "No informado";
+    return fallback;
   }
   const day = String(date.getDate()).padStart(2, "0");
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -29,13 +33,13 @@ const formatDate = (value?: string | null) => {
   return `${day}/${month}/${year}`;
 };
 
-const formatTime = (value?: string | null) => {
+const formatTime = (value: string | null | undefined, fallback: string) => {
   if (!value) {
-    return "No informado";
+    return fallback;
   }
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
-    return "No informado";
+    return fallback;
   }
   const hours = String(date.getHours()).padStart(2, "0");
   const minutes = String(date.getMinutes()).padStart(2, "0");
@@ -122,7 +126,53 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const { user } = await requireApprovedRole("comercio");
+  const { user, profile } = await requireApprovedRole("comercio");
+  const effectivePlan = getEffectivePlanForProfile(profile);
+  const planAccess = getPlanAccess(effectivePlan);
+  const cookieStore = await cookies();
+  const t = getTranslations(getLocaleFromCookies(cookieStore));
+
+  const getCategoryLabel = (value?: string | null) => {
+    const trimmed = value?.trim() ?? "";
+    if (!trimmed) {
+      return t.pdf.notReported;
+    }
+    return t.foodTypes[trimmed as keyof typeof t.foodTypes] ?? trimmed;
+  };
+
+  const storageLabels = {
+    fresco: t.storage.options.fresco,
+    refrigerado: t.storage.options.refrigerado,
+    congelado: t.storage.options.congelado,
+    seco: t.storage.options.seco,
+  } as const;
+
+  const getStorageLabel = (value?: string | null) => {
+    if (!value) {
+      return null;
+    }
+    return storageLabels[value as keyof typeof storageLabels] ?? value;
+  };
+
+  const getDonationStateLabel = (
+    storage?: string | null,
+    category?: string | null
+  ) => {
+    if (storage) {
+      return getStorageLabel(storage) ?? storage;
+    }
+    if (category) {
+      return getCategoryLabel(category);
+    }
+    return t.pdf.notReported;
+  };
+
+  if (!planAccess.reports) {
+    return NextResponse.json(
+      { error: t.pdf.errors.planRequired },
+      { status: 403 }
+    );
+  }
   const supabase = await createServerSupabase();
 
   const { data: donation } = await supabase
@@ -135,11 +185,17 @@ export async function GET(
     .single();
 
   if (!donation) {
-    return NextResponse.json({ error: "No encontrado" }, { status: 404 });
+    return NextResponse.json(
+      { error: t.pdf.errors.notFound },
+      { status: 404 }
+    );
   }
 
   if (donation.status !== "collected") {
-    return NextResponse.json({ error: "No disponible" }, { status: 403 });
+    return NextResponse.json(
+      { error: t.pdf.errors.notAvailable },
+      { status: 403 }
+    );
   }
 
   const { data: commerce } = await supabase
@@ -289,7 +345,7 @@ export async function GET(
   };
 
   const drawLabelValue = (label: string, value: string) => {
-    const text = `${label}: ${value || "No informado"}`;
+    const text = `${label}: ${value || t.pdf.notReported}`;
     drawParagraph(text);
   };
 
@@ -337,7 +393,7 @@ export async function GET(
         height: scaledHeight,
       });
     } else {
-      page.drawText("Firma no registrada", {
+      page.drawText(t.pdf.signatureMissing, {
         x: x + 8,
         y: boxY + height / 2 - 4,
         size: 8,
@@ -349,52 +405,52 @@ export async function GET(
     return boxY - 12;
   };
 
-  drawTitle("Informe de Gestion de Excedentes Alimentarios");
+  drawTitle(t.pdf.title);
 
-  drawSectionTitle("1. Datos del establecimiento");
-  drawLabelValue("Nombre comercial", commerceData?.name ?? "No informado");
-  drawLabelValue("CIF/NIF", commerceData?.tax_id ?? "No informado");
+  drawSectionTitle(t.pdf.sections.establishment);
+  drawLabelValue(t.pdf.labels.commercialName, commerceData?.name ?? t.pdf.notReported);
+  drawLabelValue(t.pdf.labels.taxId, commerceData?.tax_id ?? t.pdf.notReported);
   drawLabelValue(
-    "Direccion",
+    t.pdf.labels.address,
     commerceData?.address
       ? `${commerceData.address} ${commerceData.city ?? ""} ${commerceData.region ?? ""}`.trim()
-      : "No informado"
+      : t.pdf.notReported
   );
   drawLabelValue(
-    "Registro sanitario",
-    commerceData?.registry_number ?? "No informado"
+    t.pdf.labels.registryNumber,
+    commerceData?.registry_number ?? t.pdf.notReported
   );
 
-  drawSectionTitle("2. Datos de la entidad receptora");
-  drawLabelValue("Nombre ONG", ongData?.name ?? "No informado");
-  drawLabelValue("CIF", ongData?.tax_id ?? "No informado");
+  drawSectionTitle(t.pdf.sections.receiver);
+  drawLabelValue(t.pdf.labels.ongName, ongData?.name ?? t.pdf.notReported);
+  drawLabelValue(t.pdf.labels.ongTaxId, ongData?.tax_id ?? t.pdf.notReported);
   drawLabelValue(
-    "Direccion",
+    t.pdf.labels.address,
     ongData?.address
       ? `${ongData.address} ${ongData.city ?? ""} ${ongData.region ?? ""}`.trim()
-      : "No informado"
+      : t.pdf.notReported
   );
-  drawLabelValue("Registro", ongData?.registry_number ?? "No informado");
+  drawLabelValue(t.pdf.labels.ongRegistry, ongData?.registry_number ?? t.pdf.notReported);
 
-  drawSectionTitle("3. Datos de la operacion");
-  drawLabelValue("Fecha de generacion", formatDate(createdAt));
-  drawLabelValue("Fecha de recogida", formatDate(collectedAt));
-  drawLabelValue("Hora", formatTime(collectedAt));
-  drawLabelValue("ID interno", operationId);
+  drawSectionTitle(t.pdf.sections.operation);
+  drawLabelValue(t.pdf.labels.generatedDate, formatDate(createdAt, t.pdf.notReported));
+  drawLabelValue(t.pdf.labels.collectedDate, formatDate(collectedAt, t.pdf.notReported));
+  drawLabelValue(t.pdf.labels.time, formatTime(collectedAt, t.pdf.notReported));
+  drawLabelValue(t.pdf.labels.internalId, operationId);
 
-  drawSectionTitle("4. Detalle de los alimentos");
+  drawSectionTitle(t.pdf.sections.foods);
 
   const tableX = margin;
   const tableY = cursorY;
   const rowHeight = 18;
   const columns = [150, 60, 50, 80, 90, 85];
   const headers = [
-    "Producto",
-    "Cantidad",
-    "Unidad",
-    "Estado",
-    "Caducidad",
-    "Apto consumo",
+    t.pdf.table.product,
+    t.pdf.table.quantity,
+    t.pdf.table.unit,
+    t.pdf.table.state,
+    t.pdf.table.expiry,
+    t.pdf.table.fit,
   ];
 
   page.drawRectangle({
@@ -420,16 +476,15 @@ export async function GET(
   const rowY = tableY - rowHeight;
   let rowX = tableX;
   const rowValues = [
-    donationData?.title ?? donation.title ?? "Excedente",
+    donationData?.title ?? donation.title ?? t.verification.surplusLabel,
     kgValue ? kgValue.toFixed(1) : "0",
     "kg",
-    donationData?.storage ??
-      donationData?.category ??
-      donation.storage ??
-      donation.category ??
-      "No informado",
-    formatDate(donationData?.expires_at ?? donation.expires_at),
-    "Si",
+    getDonationStateLabel(
+      donationData?.storage ?? donation.storage ?? null,
+      donationData?.category ?? donation.category ?? null
+    ),
+    formatDate(donationData?.expires_at ?? donation.expires_at, t.pdf.notReported),
+    t.common.yes,
   ];
 
   rowValues.forEach((value, index) => {
@@ -445,21 +500,19 @@ export async function GET(
 
   cursorY = rowY - rowHeight - 6;
 
-  drawSectionTitle("5. Declaracion legal");
-  drawParagraph(
-    "El establecimiento declara que los alimentos donados eran aptos para el consumo humano en el momento de la entrega, conforme a la normativa vigente en materia de seguridad alimentaria."
-  );
+  drawSectionTitle(t.pdf.sections.legal);
+  drawParagraph(t.pdf.paragraphs.legalDeclaration);
 
-  drawSectionTitle("6. Confirmacion de recepcion");
-  drawLabelValue("Responsable ONG", ongData?.name ?? "No informado");
-  drawLabelValue("Firma registrada", ongSignature ? "Si" : "No");
-  drawLabelValue("Fecha", formatDate(collectedAt));
+  drawSectionTitle(t.pdf.sections.reception);
+  drawLabelValue(t.pdf.labels.ongResponsible, ongData?.name ?? t.pdf.notReported);
+  drawLabelValue(t.pdf.labels.signatureRecorded, ongSignature ? t.common.yes : t.common.no);
+  drawLabelValue(t.pdf.labels.date, formatDate(collectedAt, t.pdf.notReported));
 
-  drawSectionTitle("7. Trazabilidad");
-  drawLabelValue("ID unico", operationId);
-  drawLabelValue("Codigo verificable", hash);
-  drawLabelValue("URL verificacion", verificationUrl);
-  drawParagraph("Escanea el QR para validar el certificado:");
+  drawSectionTitle(t.pdf.sections.trace);
+  drawLabelValue(t.pdf.labels.uniqueId, operationId);
+  drawLabelValue(t.pdf.labels.verificationCode, hash);
+  drawLabelValue(t.pdf.labels.verificationUrl, verificationUrl);
+  drawParagraph(t.pdf.paragraphs.qrPrompt);
   const qrSize = 90;
   if (qrImage) {
     const qrY = cursorY - qrSize;
@@ -471,30 +524,26 @@ export async function GET(
     });
     cursorY = qrY - 12;
   } else {
-    drawParagraph("QR no disponible.");
+    drawParagraph(t.pdf.paragraphs.qrUnavailable);
   }
 
-  drawSectionTitle("8. Resumen de impacto");
-  drawLabelValue("Kg salvados", `${kgValue.toFixed(1)} kg`);
-  drawLabelValue("Raciones estimadas", String(raciones));
-  drawLabelValue("CO2 evitado (estimacion)", `${co2} kg`);
-  drawLabelValue("Personas beneficiadas (estimacion)", String(personas));
+  drawSectionTitle(t.pdf.sections.impact);
+  drawLabelValue(t.pdf.labels.kgSaved, `${kgValue.toFixed(1)} kg`);
+  drawLabelValue(t.pdf.labels.rations, String(raciones));
+  drawLabelValue(t.pdf.labels.co2, `${co2} kg`);
+  drawLabelValue(t.pdf.labels.people, String(personas));
 
-  drawSectionTitle("9. Referencia legal");
-  drawParagraph(
-    "Este documento se emite conforme a la Ley 1/2025 de prevencion de las perdidas y el desperdicio alimentario en Espana."
-  );
-  drawParagraph(
-    "Este documento ha sido validado electrónicamente mediante registro de actividad autenticada en la plataforma SocialFood, conforme a los principios de integridad y trazabilidad digital."
-  );
+  drawSectionTitle(t.pdf.sections.legalRef);
+  drawParagraph(t.pdf.paragraphs.legalRef1);
+  drawParagraph(t.pdf.paragraphs.legalRef2);
 
-  drawSectionTitle("10. Firmas digitales");
+  drawSectionTitle(t.pdf.sections.digitalSignatures);
   const signatureBoxHeight = 70;
   const signatureGap = 16;
   const signatureBoxWidth = (contentWidth - signatureGap) / 2;
   const signatureTop = cursorY;
   const leftBottom = drawSignatureBox(
-    "Comercio",
+    t.admin.roleLabels.commerce,
     commerceSignatureImage,
     margin,
     signatureTop,
@@ -502,7 +551,7 @@ export async function GET(
     signatureBoxHeight
   );
   const rightBottom = drawSignatureBox(
-    "ONG",
+    t.admin.roleLabels.ong,
     ongSignatureImage,
     margin + signatureBoxWidth + signatureGap,
     signatureTop,
@@ -510,7 +559,7 @@ export async function GET(
     signatureBoxHeight
   );
   cursorY = Math.min(leftBottom, rightBottom);
-  drawParagraph("Sello SocialFood: registro digital interno.");
+  drawParagraph(t.pdf.labels.seal);
 
   const pdfBytes = await pdfDoc.save();
   const pdfBuffer = pdfBytes.buffer.slice(

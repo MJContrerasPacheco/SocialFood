@@ -5,6 +5,7 @@ import { searchAddresses, type GeocodeResult } from "@/lib/geocoding";
 import { REGIONS } from "@/lib/regions";
 import { updateOngProfile, type ProfileState } from "./actions";
 import SignatureField from "@/components/SignatureField";
+import { useI18n } from "@/components/I18nProvider";
 
 const initialState: ProfileState = {};
 
@@ -27,6 +28,7 @@ type OngProfileFormProps = {
 };
 
 export default function OngProfileForm({ initialValues }: OngProfileFormProps) {
+  const { t } = useI18n();
   const [state, action, pending] = useActionState(
     updateOngProfile,
     initialState
@@ -56,7 +58,7 @@ export default function OngProfileForm({ initialValues }: OngProfileFormProps) {
   const handleUseLocation = () => {
     setGeoStatus(null);
     if (!navigator.geolocation) {
-      setGeoStatus("La geolocalizacion no esta disponible en este navegador.");
+      setGeoStatus(t.profile.geo.notAvailable);
       return;
     }
 
@@ -64,12 +66,12 @@ export default function OngProfileForm({ initialValues }: OngProfileFormProps) {
     navigator.geolocation.getCurrentPosition(
       (position) => {
         applyCoordinates(position.coords.latitude, position.coords.longitude);
-        setGeoStatus("Ubicacion actual aplicada.");
+        setGeoStatus(t.profile.geo.appliedCurrent);
         setSuggestions([]);
         setGeoPending(false);
       },
       () => {
-        setGeoStatus("No se pudo obtener la ubicacion.");
+        setGeoStatus(t.profile.geo.failed);
         setGeoPending(false);
       }
     );
@@ -87,7 +89,7 @@ export default function OngProfileForm({ initialValues }: OngProfileFormProps) {
     });
 
     if (!results.length) {
-      setGeoStatus("No se encontro la direccion. Revisa los datos.");
+      setGeoStatus(t.profile.geo.addressNotFound);
       setSuggestions([]);
       setGeoPending(false);
       return;
@@ -99,12 +101,10 @@ export default function OngProfileForm({ initialValues }: OngProfileFormProps) {
       if (addressRef.current) {
         addressRef.current.value = result.displayName;
       }
-      setGeoStatus(
-        "Ubicacion aplicada. Si no es correcta, elige otra sugerencia."
-      );
+      setGeoStatus(t.profile.geo.addressApplied);
       setSuggestions(results);
     } else {
-      setGeoStatus("Selecciona una ubicacion sugerida.");
+      setGeoStatus(t.profile.geo.selectSuggestion);
       setSuggestions(results);
     }
     setGeoPending(false);
@@ -116,7 +116,7 @@ export default function OngProfileForm({ initialValues }: OngProfileFormProps) {
       addressRef.current.value = result.displayName;
     }
     setSuggestions([]);
-    setGeoStatus(`Ubicacion aplicada: ${result.displayName}`);
+    setGeoStatus(`${t.profile.geo.appliedPrefix} ${result.displayName}`);
   };
 
   return (
@@ -126,16 +126,16 @@ export default function OngProfileForm({ initialValues }: OngProfileFormProps) {
     >
       <div>
         <h2 className="text-lg font-semibold text-slate-900">
-          Datos de la ONG
+          {t.profile.ong.title}
         </h2>
         <p className="text-sm text-slate-600">
-          Esta ubicacion se usa para ordenar donaciones cercanas.
+          {t.profile.ong.subtitle}
         </p>
       </div>
       <div className="grid gap-3 md:grid-cols-2">
         <div className="space-y-2">
           <label className="text-sm font-medium text-slate-700" htmlFor="name">
-            Nombre de la ONG
+            {t.profile.fields.ongName}
           </label>
           <input
             id="name"
@@ -149,7 +149,7 @@ export default function OngProfileForm({ initialValues }: OngProfileFormProps) {
             className="text-sm font-medium text-slate-700"
             htmlFor="contact_email"
           >
-            Email de contacto
+            {t.profile.fields.contactEmail}
           </label>
           <input
             id="contact_email"
@@ -164,7 +164,7 @@ export default function OngProfileForm({ initialValues }: OngProfileFormProps) {
       <div className="grid gap-3 md:grid-cols-2">
         <div className="space-y-2">
           <label className="text-sm font-medium text-slate-700" htmlFor="tax_id">
-            CIF
+            {t.profile.fields.taxIdOng}
           </label>
           <input
             id="tax_id"
@@ -178,7 +178,7 @@ export default function OngProfileForm({ initialValues }: OngProfileFormProps) {
             className="text-sm font-medium text-slate-700"
             htmlFor="registry_number"
           >
-            Registro de entidad
+            {t.profile.fields.registryNumberOng}
           </label>
           <input
             id="registry_number"
@@ -190,14 +190,14 @@ export default function OngProfileForm({ initialValues }: OngProfileFormProps) {
       </div>
       <SignatureField
         name="signature_data_url"
-        label="Firma digital de la ONG"
-        helper="Dibuja o sube una firma. Se usara en los certificados de recogida."
+        label={t.profile.ong.signatureLabel}
+        helper={t.profile.ong.signatureHelper}
         initialValue={initialValues?.signature_data_url ?? null}
       />
       <div className="grid gap-3 md:grid-cols-2">
         <div className="space-y-2">
           <label className="text-sm font-medium text-slate-700" htmlFor="telefono">
-            Telefono
+            {t.profile.fields.phone}
           </label>
           <input
             id="telefono"
@@ -208,7 +208,7 @@ export default function OngProfileForm({ initialValues }: OngProfileFormProps) {
         </div>
         <div className="space-y-2">
           <label className="text-sm font-medium text-slate-700" htmlFor="whatsapp">
-            WhatsApp
+            {t.profile.fields.whatsapp}
           </label>
           <input
             id="whatsapp"
@@ -220,7 +220,7 @@ export default function OngProfileForm({ initialValues }: OngProfileFormProps) {
       </div>
       <div className="space-y-2">
         <label className="text-sm font-medium text-slate-700" htmlFor="address">
-          Direccion
+          {t.profile.fields.address}
         </label>
         <input
           id="address"
@@ -233,7 +233,7 @@ export default function OngProfileForm({ initialValues }: OngProfileFormProps) {
       <div className="grid gap-3 md:grid-cols-3">
         <div className="space-y-2">
           <label className="text-sm font-medium text-slate-700" htmlFor="city">
-            Ciudad
+            {t.profile.fields.city}
           </label>
           <input
             id="city"
@@ -245,7 +245,7 @@ export default function OngProfileForm({ initialValues }: OngProfileFormProps) {
         </div>
         <div className="space-y-2">
           <label className="text-sm font-medium text-slate-700" htmlFor="region">
-            Region
+            {t.profile.fields.region}
           </label>
           <select
             id="region"
@@ -254,7 +254,7 @@ export default function OngProfileForm({ initialValues }: OngProfileFormProps) {
             ref={regionRef}
             className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200"
           >
-            <option value="">Selecciona una region</option>
+            <option value="">{t.profile.fields.regionPlaceholder}</option>
             {REGIONS.map((region) => (
               <option key={region} value={region}>
                 {region}
@@ -267,7 +267,7 @@ export default function OngProfileForm({ initialValues }: OngProfileFormProps) {
             className="text-sm font-medium text-slate-700"
             htmlFor="postal_code"
           >
-            Codigo postal
+            {t.profile.fields.postalCode}
           </label>
           <input
             id="postal_code"
@@ -288,7 +288,7 @@ export default function OngProfileForm({ initialValues }: OngProfileFormProps) {
           disabled={geoPending}
           className="w-full rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 btn-glow-soft sm:w-auto"
         >
-          Usar mi ubicacion
+          {t.profile.geo.useLocation}
         </button>
         <button
           type="button"
@@ -296,21 +296,21 @@ export default function OngProfileForm({ initialValues }: OngProfileFormProps) {
           disabled={geoPending}
           className="w-full rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 btn-glow-soft sm:w-auto"
         >
-          Buscar por direccion
+          {t.profile.geo.searchAddress}
         </button>
         {geoStatus && (
           <span className="text-xs text-slate-600">{geoStatus}</span>
         )}
         {coords.lat && coords.lng ? (
           <span className="text-xs font-semibold text-emerald-600">
-            Coordenadas confirmadas
+            {t.profile.geo.coordinatesConfirmed}
           </span>
         ) : null}
       </div>
       {suggestions.length > 0 && (
         <div className="grid gap-2 rounded-2xl border border-slate-100 bg-white px-4 py-3">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-            Sugerencias
+            {t.profile.geo.suggestions}
           </p>
           {suggestions.map((result) => (
             <button
@@ -339,7 +339,7 @@ export default function OngProfileForm({ initialValues }: OngProfileFormProps) {
         disabled={pending}
         className="w-full rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-slate-900/10 transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-70 btn-glow"
       >
-        {pending ? "Guardando..." : "Guardar datos"}
+        {pending ? t.profile.submit.saving : t.profile.submit.save}
       </button>
     </form>
   );

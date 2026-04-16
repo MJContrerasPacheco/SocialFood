@@ -3,6 +3,7 @@
 import { z } from "zod";
 import crypto from "crypto";
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 import {
   DONACIONES_TABLE,
   ORGANIZATIONS_TABLE,
@@ -11,6 +12,7 @@ import {
 import { requireApprovedRole } from "@/lib/auth";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { parseImageDataUrl } from "@/lib/image-data";
+import { getLocaleFromCookies, getTranslations } from "@/lib/i18n";
 
 export type DonationState = {
   error?: string;
@@ -71,10 +73,14 @@ const getTextValue = (formData: FormData, key: string) => {
   return typeof value === "string" ? value : "";
 };
 
+const getActionTranslations = async () =>
+  getTranslations(getLocaleFromCookies(await cookies()));
+
 export async function createDonation(
   _: DonationState,
   formData: FormData
 ) {
+  const t = await getActionTranslations();
   const { user } = await requireApprovedRole("comercio");
 
   const parsed = donationSchema.safeParse({
@@ -90,7 +96,7 @@ export async function createDonation(
   });
 
   if (!parsed.success) {
-    return { error: "Datos invalidos" } satisfies DonationState;
+    return { error: t.donationMessages.invalid } satisfies DonationState;
   }
 
   const supabase = await createServerSupabase();
@@ -109,23 +115,24 @@ export async function createDonation(
   });
 
   if (error) {
-    return { error: "No se pudo crear la donacion" } satisfies DonationState;
+    return { error: t.donationMessages.createFailed } satisfies DonationState;
   }
 
   revalidatePath("/comercio");
   revalidatePath("/comercio/excedentes");
-  return { success: "Donacion creada" } satisfies DonationState;
+  return { success: t.donationMessages.created } satisfies DonationState;
 }
 
 export async function updateDonation(
   _: DonationState,
   formData: FormData
 ) {
+  const t = await getActionTranslations();
   const { user } = await requireApprovedRole("comercio");
   const donationId = String(formData.get("donacionId") || "");
 
   if (!donationId) {
-    return { error: "Falta el identificador de la donacion" } satisfies DonationState;
+    return { error: t.donationMessages.missingId } satisfies DonationState;
   }
 
   const parsed = donationSchema.safeParse({
@@ -141,7 +148,7 @@ export async function updateDonation(
   });
 
   if (!parsed.success) {
-    return { error: "Datos invalidos" } satisfies DonationState;
+    return { error: t.donationMessages.invalid } satisfies DonationState;
   }
 
   const supabase = await createServerSupabase();
@@ -153,12 +160,12 @@ export async function updateDonation(
     .single();
 
   if (!donation) {
-    return { error: "No se encontro la donacion" } satisfies DonationState;
+    return { error: t.donationMessages.notFound } satisfies DonationState;
   }
 
   if (donation.status !== "available") {
     return {
-      error: "Solo puedes editar excedentes que estan libres",
+      error: t.donationMessages.editNotAllowed,
     } satisfies DonationState;
   }
 
@@ -179,12 +186,12 @@ export async function updateDonation(
     .eq("user_id", user.id);
 
   if (error) {
-    return { error: "No se pudo actualizar la donacion" } satisfies DonationState;
+    return { error: t.donationMessages.updateFailed } satisfies DonationState;
   }
 
   revalidatePath("/comercio");
   revalidatePath("/comercio/excedentes");
-  return { success: "Donacion actualizada" } satisfies DonationState;
+  return { success: t.donationMessages.updated } satisfies DonationState;
 }
 
 export async function deleteDonation(formData: FormData) {
@@ -221,6 +228,7 @@ export async function updateCommerceProfile(
   _: ProfileState,
   formData: FormData
 ) {
+  const t = await getActionTranslations();
   const { user } = await requireApprovedRole("comercio");
   const parsed = profileSchema.safeParse({
     name: formData.get("name"),
@@ -237,7 +245,7 @@ export async function updateCommerceProfile(
   });
 
   if (!parsed.success) {
-    return { error: "Datos invalidos" } satisfies ProfileState;
+    return { error: t.profile.messages.invalid } satisfies ProfileState;
   }
 
   const resolvedLat = normalizeCoordinate(formData.get("lat"));
@@ -246,8 +254,7 @@ export async function updateCommerceProfile(
 
   if (resolvedLat === null || resolvedLng === null) {
     return {
-      error:
-        "Confirma la ubicacion con Buscar por direccion o Usar mi ubicacion.",
+      error: t.profile.messages.locationRequired,
     } satisfies ProfileState;
   }
 
@@ -268,7 +275,7 @@ export async function updateCommerceProfile(
   } else if (signatureInput !== existingOrg?.signature_data_url) {
     const parsedSignature = parseImageDataUrl(signatureInput);
     if (!parsedSignature) {
-      return { error: "Firma invalida" } satisfies ProfileState;
+      return { error: t.profile.messages.signatureInvalid } satisfies ProfileState;
     }
     const extension = parsedSignature.mime === "image/png" ? "png" : "jpg";
     const signatureName = `${user.id}/${Date.now()}-${crypto
@@ -282,7 +289,7 @@ export async function updateCommerceProfile(
       });
 
     if (uploadError) {
-      return { error: "No se pudo guardar la firma" } satisfies ProfileState;
+      return { error: t.profile.messages.signatureSaveFailed } satisfies ProfileState;
     }
     signaturePath = signatureName;
   }
@@ -311,12 +318,12 @@ export async function updateCommerceProfile(
 
   if (error) {
     return {
-      error: error.message || "No se pudo guardar el perfil",
+      error: error.message || t.profile.messages.saveFailed,
     } satisfies ProfileState;
   }
 
   revalidatePath("/comercio");
-  return { success: "Perfil actualizado" } satisfies ProfileState;
+  return { success: t.profile.messages.updated } satisfies ProfileState;
 }
 
 export async function markDonationCollected(formData: FormData) {

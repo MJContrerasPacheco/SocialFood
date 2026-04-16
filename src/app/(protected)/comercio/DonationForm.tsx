@@ -2,6 +2,7 @@
 
 import { FOOD_TYPES } from "@/lib/food-types";
 import type { DonationState } from "./actions";
+import { useI18n } from "@/components/I18nProvider";
 
 type DonationFormValues = {
   title?: string | null;
@@ -40,6 +41,7 @@ export default function DonationForm({
   donationId,
   className,
 }: DonationFormProps) {
+  const { t } = useI18n();
   return (
     <form
       action={action}
@@ -57,7 +59,7 @@ export default function DonationForm({
       ) : null}
       <div className="space-y-2">
         <label className="text-sm font-medium text-slate-700" htmlFor="title">
-          Titulo
+          {t.donationForm.titleLabel}
         </label>
         <input
           id="title"
@@ -69,7 +71,7 @@ export default function DonationForm({
       </div>
       <div className="space-y-2">
         <label className="text-sm font-medium text-slate-700" htmlFor="kg">
-          Cantidad (kg)
+          {t.donationForm.amountLabel}
         </label>
         <input
           id="kg"
@@ -87,7 +89,7 @@ export default function DonationForm({
             className="text-sm font-medium text-slate-700"
             htmlFor="category"
           >
-            Tipo de comida
+            {t.donationForm.foodTypeLabel}
           </label>
           <select
             id="category"
@@ -95,10 +97,10 @@ export default function DonationForm({
             defaultValue={initialValues?.category ?? ""}
             className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200"
           >
-            <option value="">Selecciona un tipo</option>
+            <option value="">{t.donationForm.foodTypePlaceholder}</option>
             {FOOD_TYPES.map((type) => (
               <option key={type} value={type}>
-                {type}
+                {t.foodTypes[type] ?? type}
               </option>
             ))}
           </select>
@@ -108,7 +110,7 @@ export default function DonationForm({
             className="text-sm font-medium text-slate-700"
             htmlFor="storage"
           >
-            Conservacion
+            {t.donationForm.storageLabel}
           </label>
           <select
             id="storage"
@@ -116,11 +118,13 @@ export default function DonationForm({
             defaultValue={initialValues?.storage ?? ""}
             className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200"
           >
-            <option value="">Selecciona</option>
-            <option value="fresco">Fresco</option>
-            <option value="refrigerado">Refrigerado</option>
-            <option value="congelado">Congelado</option>
-            <option value="seco">Seco</option>
+            <option value="">{t.donationForm.storagePlaceholder}</option>
+            <option value="fresco">{t.storage.options.fresco}</option>
+            <option value="refrigerado">
+              {t.storage.options.refrigerado}
+            </option>
+            <option value="congelado">{t.storage.options.congelado}</option>
+            <option value="seco">{t.storage.options.seco}</option>
           </select>
         </div>
       </div>
@@ -130,7 +134,7 @@ export default function DonationForm({
             className="text-sm font-medium text-slate-700"
             htmlFor="expires_at"
           >
-            Caducidad estimada
+            {t.donationForm.expiryLabel}
           </label>
           <input
             id="expires_at"
@@ -145,12 +149,12 @@ export default function DonationForm({
             className="text-sm font-medium text-slate-700"
             htmlFor="pickup_window"
           >
-            Horario de recogida
+            {t.donationForm.pickupLabel}
           </label>
           <input
             id="pickup_window"
             name="pickup_window"
-            placeholder="16:00 - 19:00"
+            placeholder={t.donationForm.pickupPlaceholder}
             defaultValue={initialValues?.pickup_window ?? ""}
             className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200"
           />
@@ -161,12 +165,12 @@ export default function DonationForm({
           className="text-sm font-medium text-slate-700"
           htmlFor="allergens"
         >
-          Alergenos
+          {t.donationForm.allergensLabel}
         </label>
         <input
           id="allergens"
           name="allergens"
-          placeholder="Gluten, lactosa..."
+          placeholder={t.donationForm.allergensPlaceholder}
           defaultValue={initialValues?.allergens ?? ""}
           className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200"
         />
@@ -176,7 +180,7 @@ export default function DonationForm({
           className="text-sm font-medium text-slate-700"
           htmlFor="description"
         >
-          Descripcion
+          {t.donationForm.descriptionLabel}
         </label>
         <textarea
           id="description"
@@ -188,13 +192,13 @@ export default function DonationForm({
       </div>
       <div className="space-y-2">
         <label className="text-sm font-medium text-slate-700" htmlFor="notes">
-          Notas adicionales
+          {t.donationForm.notesLabel}
         </label>
         <textarea
           id="notes"
           name="notes"
           rows={3}
-          placeholder="Instrucciones de acceso, empaquetado, etc."
+          placeholder={t.donationForm.notesPlaceholder}
           defaultValue={initialValues?.notes ?? ""}
           className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200"
         />

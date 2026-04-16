@@ -1,19 +1,31 @@
-export const DONATION_STATUS_LABELS = {
+export type DonationStatusLabels = {
+  available: string;
+  pending: string;
+  assigned: string;
+  collected: string;
+  unknown: string;
+};
+
+export const DEFAULT_DONATION_STATUS_LABELS: DonationStatusLabels = {
   available: "Libre",
   pending: "Pendiente",
   assigned: "Pendiente",
   collected: "Recogido",
-} as const;
+  unknown: "Desconocido",
+};
 
-type DonationStatus = keyof typeof DONATION_STATUS_LABELS;
+type DonationStatus = keyof Omit<DonationStatusLabels, "unknown">;
 
-export function formatDonationStatus(status?: string | null): string {
+export function formatDonationStatus(
+  status?: string | null,
+  labels: DonationStatusLabels = DEFAULT_DONATION_STATUS_LABELS
+): string {
   if (!status) {
-    return "Desconocido";
+    return labels.unknown;
   }
 
-  if (status in DONATION_STATUS_LABELS) {
-    return DONATION_STATUS_LABELS[status as DonationStatus];
+  if (status in labels) {
+    return labels[status as DonationStatus];
   }
 
   return status;

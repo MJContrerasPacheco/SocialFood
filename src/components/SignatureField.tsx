@@ -1,7 +1,9 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import type { PointerEvent, ChangeEvent } from "react";
+import { useI18n } from "@/components/I18nProvider";
 
 type SignatureFieldProps = {
   name: string;
@@ -16,6 +18,7 @@ export default function SignatureField({
   helper,
   initialValue,
 }: SignatureFieldProps) {
+  const { t } = useI18n();
   const [mode, setMode] = useState<"draw" | "upload">("draw");
   const [signature, setSignature] = useState(initialValue ?? "");
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -132,7 +135,7 @@ export default function SignatureField({
                 : "border-slate-200 bg-white text-slate-700"
             }`}
           >
-            Dibujar
+            {t.signature.draw}
           </button>
           <button
             type="button"
@@ -143,7 +146,7 @@ export default function SignatureField({
                 : "border-slate-200 bg-white text-slate-700"
             }`}
           >
-            Subir imagen
+            {t.signature.upload}
           </button>
         </div>
       </div>
@@ -165,7 +168,7 @@ export default function SignatureField({
             onClick={clearCanvas}
             className="w-full rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 sm:w-auto"
           >
-            Limpiar firma
+            {t.signature.clear}
           </button>
         </div>
       ) : (
@@ -180,10 +183,15 @@ export default function SignatureField({
       )}
       {signature ? (
         <div className="grid gap-2">
-          <p className="text-xs font-semibold text-slate-600">Vista previa</p>
-          <img
+          <p className="text-xs font-semibold text-slate-600">
+            {t.signature.preview}
+          </p>
+          <Image
             src={signature}
-            alt="Firma guardada"
+            alt={t.signature.savedAlt}
+            width={560}
+            height={160}
+            unoptimized
             className="h-24 w-full rounded-xl border border-slate-200 bg-white object-contain"
           />
           <button
@@ -191,11 +199,11 @@ export default function SignatureField({
             onClick={() => setSignature("")}
             className="w-full rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 sm:w-auto"
           >
-            Quitar firma guardada
+            {t.signature.removeSaved}
           </button>
         </div>
       ) : (
-        <p className="text-xs text-slate-500">Sin firma guardada.</p>
+        <p className="text-xs text-slate-500">{t.signature.none}</p>
       )}
       <input type="hidden" name={name} value={signature} />
     </div>

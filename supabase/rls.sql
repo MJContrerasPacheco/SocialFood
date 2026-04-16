@@ -277,12 +277,13 @@ begin
     user_role := 'comercio';
   end if;
 
-  insert into public.users (id, email, role, name)
+  insert into public.users (id, email, role, name, plan_tier)
   values (
     new.id,
     new.email,
     user_role,
-    new.raw_user_meta_data->>'name'
+    new.raw_user_meta_data->>'name',
+    'free'
   )
   on conflict (id) do update
     set email = excluded.email,

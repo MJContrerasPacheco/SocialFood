@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import OngProfileForm from "./OngProfileForm";
 import OngMap from "./OngMap";
 import { haversineKm, hasValidCoordinates, normalizeCoordinate } from "@/lib/geo";
 import { formatDonationStatus } from "@/lib/donations";
+import { useI18n } from "@/components/I18nProvider";
 
 type DonationItem = {
   id: string;
@@ -58,6 +59,7 @@ export default function OngDashboard({
   requestDonation,
   initialSelectedDonationId = null,
 }: OngDashboardProps) {
+  const { t } = useI18n();
   const [selectedDonationId, setSelectedDonationId] = useState<string | null>(
     initialSelectedDonationId ??
       requestedDonations[0]?.id ??
@@ -109,9 +111,9 @@ export default function OngDashboard({
   }, [ongCity, ongRegion, scopeMode]);
   const isRegionLimited = effectiveScope !== "all";
   const scopeOptions = [
-    { value: "city", label: "Ciudad", enabled: Boolean(ongCity) },
-    { value: "region", label: "Comunidad", enabled: Boolean(ongRegion) },
-    { value: "all", label: "Toda Espana", enabled: true },
+    { value: "city", label: t.ong.dashboard.scopeOptions.city, enabled: Boolean(ongCity) },
+    { value: "region", label: t.ong.dashboard.scopeOptions.region, enabled: Boolean(ongRegion) },
+    { value: "all", label: t.ong.dashboard.scopeOptions.all, enabled: true },
   ] as const;
   const renderScopeControls = () => (
     <div className="flex flex-wrap items-center gap-2">
@@ -130,9 +132,9 @@ export default function OngDashboard({
             } ${option.enabled ? "btn-glow-soft" : "opacity-50 cursor-not-allowed"}`}
           >
             {option.value === "city" && ongOrganization?.city
-              ? `Ciudad: ${ongOrganization.city}`
+              ? `${t.ong.dashboard.scopeCityPrefix} ${ongOrganization.city}`
               : option.value === "region" && ongOrganization?.region
-                ? `Comunidad: ${ongOrganization.region}`
+                ? `${t.ong.dashboard.scopeRegionPrefix} ${ongOrganization.region}`
                 : option.label}
           </button>
         );
@@ -146,7 +148,12 @@ export default function OngDashboard({
         const org = donation.user_id ? orgPublicMap.get(donation.user_id) : null;
         const distanceKm =
           org && hasValidCoordinates(ongLat, ongLng) && hasValidCoordinates(org.lat, org.lng)
-            ? haversineKm(ongLat, ongLng, org.lat as number, org.lng as number)
+            ? haversineKm(
+                ongLat as number,
+                ongLng as number,
+                org.lat as number,
+                org.lng as number
+              )
             : null;
         return { donation, org, distanceKm };
       })
@@ -189,11 +196,28 @@ export default function OngDashboard({
     return new Set(requestedDonations.map((donation) => donation.id));
   }, [requestedDonations]);
 
+  const fallbackDonationId =
+    initialSelectedDonationId ??
+    requestedDonations[0]?.id ??
+    visibleDonationList[0]?.donation.id ??
+    null;
+
+  const preferredDonationId = initialSelectedDonationId ?? selectedDonationId;
+  const preferredDonationExists = preferredDonationId
+    ? requestedDonationIds.has(preferredDonationId) ||
+      visibleDonationList.some(
+        (item) => item.donation.id === preferredDonationId
+      )
+    : false;
+  const effectiveSelectedDonationId = preferredDonationExists
+    ? preferredDonationId
+    : fallbackDonationId;
+
   const selectedAvailableItem = visibleDonationList.find(
-    (item) => item.donation.id === selectedDonationId
+    (item) => item.donation.id === effectiveSelectedDonationId
   );
-  const selectedRequestedDonation = selectedDonationId
-    ? requestedDonationMap.get(selectedDonationId) ?? null
+  const selectedRequestedDonation = effectiveSelectedDonationId
+    ? requestedDonationMap.get(effectiveSelectedDonationId) ?? null
     : null;
   const selectedDonation =
     selectedAvailableItem?.donation ?? selectedRequestedDonation ?? null;
@@ -203,48 +227,9 @@ export default function OngDashboard({
   const selectedContactOrg = selectedDonation?.user_id
     ? requestedOrgMap.get(selectedDonation.user_id) ?? null
     : null;
-  const isSelectedRequested = selectedDonationId
-    ? requestedDonationIds.has(selectedDonationId)
+  const isSelectedRequested = effectiveSelectedDonationId
+    ? requestedDonationIds.has(effectiveSelectedDonationId)
     : false;
-
-  useEffect(() => {
-    const fallbackId =
-      initialSelectedDonationId ??
-      requestedDonations[0]?.id ??
-      visibleDonationList[0]?.donation.id ??
-      null;
-
-    if (!selectedDonationId) {
-      if (fallbackId) {
-        setSelectedDonationId(fallbackId);
-      }
-      return;
-    }
-
-    const existsInAvailable = visibleDonationList.some(
-      (item) => item.donation.id === selectedDonationId
-    );
-    const existsInRequested = requestedDonationIds.has(selectedDonationId);
-
-    if (!existsInAvailable && !existsInRequested && fallbackId) {
-      setSelectedDonationId(fallbackId);
-    }
-  }, [
-    visibleDonationList,
-    initialSelectedDonationId,
-    requestedDonations,
-    requestedDonationIds,
-    selectedDonationId,
-  ]);
-
-  useEffect(() => {
-    if (
-      initialSelectedDonationId &&
-      initialSelectedDonationId !== selectedDonationId
-    ) {
-      setSelectedDonationId(initialSelectedDonationId);
-    }
-  }, [initialSelectedDonationId, selectedDonationId]);
 
   const scopedOrgs = useMemo(() => {
     if (!isRegionLimited) {
@@ -258,24 +243,22 @@ export default function OngDashboard({
     );
   }, [effectiveScope, isRegionLimited, ongCity, ongRegion, orgsPublic]);
 
-  const markerOrgs = useMemo(() => {
+  const markerOrgs = (() => {
     const map = new Map(scopedOrgs.map((org) => [org.user_id, org]));
     if (selectedOrgPublic && !map.has(selectedOrgPublic.user_id)) {
       map.set(selectedOrgPublic.user_id, selectedOrgPublic);
     }
     return Array.from(map.values());
-  }, [scopedOrgs, selectedOrgPublic]);
+  })();
 
-  const mapMarkers = useMemo(() => {
-    return markerOrgs
-      .filter((org) => hasValidCoordinates(org.lat, org.lng))
-      .map((org) => ({
-        id: org.user_id,
-        title: org.name || "Comercio",
-        lat: org.lat as number,
-        lng: org.lng as number,
-      }));
-  }, [markerOrgs]);
+  const mapMarkers = markerOrgs
+    .filter((org) => hasValidCoordinates(org.lat, org.lng))
+    .map((org) => ({
+      id: org.user_id,
+      title: org.name || t.ong.donations.commerceLabel,
+      lat: org.lat as number,
+      lng: org.lng as number,
+    }));
 
   const missingMarkersCount = useMemo(() => {
     return scopedOrgs.filter((org) => !hasValidCoordinates(org.lat, org.lng))
@@ -285,6 +268,12 @@ export default function OngDashboard({
   const selectedMarkerId =
     selectedOrgPublic?.user_id ?? selectedDonation?.user_id ?? null;
 
+  const formatDistanceToOng = (distanceKm: number) =>
+    t.ong.dashboard.distanceToOng.replace(
+      "{distance}",
+      distanceKm.toFixed(1)
+    );
+
   return (
     <div className="grid gap-6 sm:gap-8">
       <div className="grid gap-4 sm:gap-6 lg:grid-cols-[1.1fr_0.9fr]">
@@ -292,7 +281,7 @@ export default function OngDashboard({
         <div className="rounded-3xl border border-white/60 bg-white/80 p-3 shadow-[0_20px_60px_rgba(15,23,42,0.12)] backdrop-blur animate-fade-up-delay-2 sm:p-4">
           <div className="flex flex-col gap-2 px-2 pb-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-              Alcance
+              {t.ong.dashboard.scopeTitle}
             </p>
             {renderScopeControls()}
           </div>
@@ -304,12 +293,12 @@ export default function OngDashboard({
           />
           {!hasValidCoordinates(ongLat, ongLng) ? (
             <p className="mt-3 text-xs text-slate-500">
-              Completa tu ubicacion para ordenar por cercania.
+              {t.ong.dashboard.mapMissingLocation}
             </p>
           ) : null}
           {missingMarkersCount > 0 ? (
             <p className="mt-2 text-xs text-slate-500">
-              {missingMarkersCount} comercios no tienen ubicacion confirmada.
+              {missingMarkersCount} {t.ong.dashboard.mapMissingMarkers}
             </p>
           ) : null}
         </div>
@@ -318,16 +307,16 @@ export default function OngDashboard({
       <section className="rounded-3xl border border-white/60 bg-white/80 p-4 shadow-[0_20px_60px_rgba(15,23,42,0.12)] backdrop-blur animate-fade-up-delay-3 sm:p-6">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-lg font-semibold text-slate-900">
-            Donaciones disponibles
+            {t.ong.dashboard.availableTitle}
           </h2>
           <div className="flex flex-wrap items-center gap-2">
             {isRegionLimited ? (
               <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 badge-animate">
-                {visibleDonationList.length} en tu zona
+                {visibleDonationList.length} {t.ong.dashboard.availableInZone}
               </span>
             ) : (
               <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 badge-animate">
-                {visibleDonationList.length} opciones
+                {visibleDonationList.length} {t.ong.dashboard.availableOptions}
               </span>
             )}
           </div>
@@ -335,7 +324,7 @@ export default function OngDashboard({
         <div className="mt-4 grid gap-3 sm:gap-4">
           {visibleDonationList.length > 0 ? (
             visibleDonationList.map(({ donation, org, distanceKm }, index) => {
-              const isSelected = donation.id === selectedDonationId;
+              const isSelected = donation.id === effectiveSelectedDonationId;
               return (
                 <div
                   key={donation.id}
@@ -359,7 +348,7 @@ export default function OngDashboard({
                       {donation.title}
                     </p>
                     <p className="text-xs text-slate-500">
-                      Publicado: {donation.created_at?.slice(0, 10)}
+                      {t.ong.dashboard.publishedLabel}: {donation.created_at?.slice(0, 10)}
                     </p>
                     {org?.city && (
                       <p className="text-xs text-slate-500">
@@ -368,15 +357,15 @@ export default function OngDashboard({
                     )}
                     {distanceKm !== null && (
                       <p className="text-xs text-emerald-600">
-                        A {distanceKm.toFixed(1)} km de tu ONG
+                        {formatDistanceToOng(distanceKm)}
                       </p>
                     )}
                     <p className="text-xs text-slate-500">
-                      Estado: {formatDonationStatus(donation.status)}
+                      {t.ong.dashboard.statusLabel}: {formatDonationStatus(donation.status, t.status)}
                     </p>
                   </div>
                   <div>
-                    <p className="text-xs uppercase text-slate-400">Cantidad</p>
+                    <p className="text-xs uppercase text-slate-400">{t.common.quantity}</p>
                     <p className="font-semibold">{donation.kg} kg</p>
                   </div>
                   <form
@@ -389,7 +378,7 @@ export default function OngDashboard({
                       onClick={() => setSelectedDonationId(donation.id)}
                       className="rounded-full bg-emerald-600 px-4 py-2 text-xs font-semibold text-white btn-glow"
                     >
-                      Solicitar
+                      {t.ong.donations.requestAction}
                     </button>
                   </form>
                 </div>
@@ -397,14 +386,14 @@ export default function OngDashboard({
             })
           ) : (
             <div className="rounded-2xl border border-dashed border-slate-200 bg-white/60 p-6 text-sm text-slate-500">
-              <p>No hay donaciones disponibles en esta zona.</p>
+              <p>{t.ong.dashboard.emptyInZone}</p>
               {effectiveScope !== "all" ? (
                 <button
                   type="button"
                   onClick={() => setScopeMode("all")}
                   className="mt-3 inline-flex rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 btn-glow-soft"
                 >
-                  Ampliar a toda Espana
+                  {t.ong.dashboard.expandAllSpain}
                 </button>
               ) : null}
             </div>
@@ -414,7 +403,7 @@ export default function OngDashboard({
 
       <section className="rounded-3xl border border-white/60 bg-white/80 p-4 shadow-[0_20px_60px_rgba(15,23,42,0.12)] backdrop-blur animate-fade-up-delay-4 sm:p-6">
         <h2 className="text-lg font-semibold text-slate-900">
-          Detalle de la donacion
+          {t.ong.dashboard.detailTitle}
         </h2>
         {selectedDonation ? (
           <div className="mt-4 grid gap-3 rounded-2xl border border-slate-100 bg-white p-4 text-sm">
@@ -423,7 +412,7 @@ export default function OngDashboard({
                 {selectedDonation.title}
               </p>
               <p className="text-xs text-slate-500">
-                {selectedDonation.kg} kg · {formatDonationStatus(selectedDonation.status)}
+                {selectedDonation.kg} kg · {formatDonationStatus(selectedDonation.status, t.status)}
               </p>
               {selectedOrgPublic?.city && (
                 <p className="text-xs text-slate-500">
@@ -435,7 +424,7 @@ export default function OngDashboard({
               {isSelectedRequested ? (
                 <>
                   <p className="text-xs uppercase text-slate-400">
-                    Contacto comercio
+                    {t.ong.dashboard.contactTitle}
                   </p>
                   {selectedContactOrg ? (
                     <>
@@ -454,20 +443,20 @@ export default function OngDashboard({
                     </>
                   ) : (
                     <p className="text-xs text-slate-500">
-                      El comercio aun no cargo sus datos de contacto.
+                      {t.ong.dashboard.contactMissing}
                     </p>
                   )}
                 </>
               ) : (
                 <p className="text-xs text-slate-500">
-                  Solicita la donacion para ver el contacto del comercio.
+                  {t.ong.dashboard.contactRequestPrompt}
                 </p>
               )}
             </div>
           </div>
         ) : (
           <p className="mt-4 text-sm text-slate-500">
-            Selecciona una donacion para ver detalles.
+            {t.ong.dashboard.detailSelectPrompt}
           </p>
         )}
       </section>
@@ -475,10 +464,10 @@ export default function OngDashboard({
       <section className="rounded-3xl border border-white/60 bg-white/80 p-4 shadow-[0_20px_60px_rgba(15,23,42,0.12)] backdrop-blur animate-fade-up-delay-4 sm:p-6">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-lg font-semibold text-slate-900">
-            Mis solicitudes
+            {t.ong.dashboard.requestsTitle}
           </h2>
           <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600 badge-animate">
-            {requestedDonations.length} registros
+            {requestedDonations.length} {t.ong.dashboard.requestsLabel}
           </span>
         </div>
         <div className="mt-4 grid gap-3">
@@ -487,7 +476,7 @@ export default function OngDashboard({
               const org = donation.user_id
                 ? requestedOrgMap.get(donation.user_id)
                 : null;
-              const isSelected = donation.id === selectedDonationId;
+              const isSelected = donation.id === effectiveSelectedDonationId;
               return (
                 <div
                   key={donation.id}
@@ -511,7 +500,7 @@ export default function OngDashboard({
                       {donation.title}
                     </p>
                     <p className="text-xs text-slate-500">
-                      {donation.kg} kg · {formatDonationStatus(donation.status)}
+                      {donation.kg} kg · {formatDonationStatus(donation.status, t.status)}
                     </p>
                     {org?.address && (
                       <p className="text-xs text-slate-500">{org.address}</p>
@@ -519,7 +508,7 @@ export default function OngDashboard({
                   </div>
                   <div>
                     <p className="text-xs uppercase text-slate-400">
-                      Contacto comercio
+                      {t.ong.dashboard.contactTitle}
                     </p>
                     {org ? (
                       <>
@@ -533,7 +522,7 @@ export default function OngDashboard({
                       </>
                     ) : (
                       <p className="text-xs text-slate-500">
-                        Sin datos de contacto cargados.
+                        {t.ong.dashboard.contactMissingData}
                       </p>
                     )}
                   </div>
@@ -542,7 +531,7 @@ export default function OngDashboard({
             })
           ) : (
             <p className="text-sm text-slate-500">
-              Aun no has solicitado donaciones.
+              {t.ong.dashboard.requestsEmpty}
             </p>
           )}
         </div>

@@ -3,14 +3,22 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-const navItems = [
-  { href: "/ong", label: "Resumen" },
-  { href: "/ong/donaciones", label: "Donaciones" },
-  { href: "/ong/configuracion", label: "Configuracion" },
-];
+type OngNavProps = {
+  labels: {
+    summary: string;
+    donations: string;
+    settings: string;
+  };
+};
 
-export default function OngNav() {
+export default function OngNav({ labels }: OngNavProps) {
   const pathname = usePathname();
+
+  const navItems = [
+    { href: "/ong", label: labels.summary },
+    { href: "/ong/donaciones", label: labels.donations },
+    { href: "/ong/configuracion", label: labels.settings },
+  ];
 
   return (
     <nav className="mx-auto flex w-full max-w-[420px] flex-wrap items-center justify-center gap-1.5 rounded-2xl border border-white/70 bg-[linear-gradient(120deg,rgba(16,185,129,0.18),rgba(14,116,144,0.12),rgba(255,255,255,0.9))] px-2 py-2 shadow-sm backdrop-blur sm:max-w-none sm:gap-2 sm:px-2 sm:py-1">

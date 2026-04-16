@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import crypto from "crypto";
+import { cookies } from "next/headers";
 import {
   DONACIONES_TABLE,
   DONATION_CERTIFICATES_TABLE,
@@ -12,6 +13,7 @@ import {
 import { requireApprovedRole } from "@/lib/auth";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { parseImageDataUrl } from "@/lib/image-data";
+import { getLocaleFromCookies, getTranslations } from "@/lib/i18n";
 
 export type ProfileState = {
   error?: string;
@@ -71,6 +73,9 @@ const buildOperationHash = (
     .digest("hex")
     .toUpperCase();
 };
+
+const getActionTranslations = async () =>
+  getTranslations(getLocaleFromCookies(await cookies()));
 
 export async function requestDonation(formData: FormData) {
   const { user } = await requireApprovedRole("ong");
@@ -249,6 +254,7 @@ export async function updateOngProfile(
   _: ProfileState,
   formData: FormData
 ) {
+  const t = await getActionTranslations();
   const { user } = await requireApprovedRole("ong");
   const parsed = profileSchema.safeParse({
     name: formData.get("name"),
@@ -265,7 +271,7 @@ export async function updateOngProfile(
   });
 
   if (!parsed.success) {
-    return { error: "Datos invalidos" } satisfies ProfileState;
+    return { error: t.profile.messages.invalid } satisfies ProfileState;
   }
 
   const resolvedLat = normalizeCoordinate(formData.get("lat"));
@@ -274,8 +280,7 @@ export async function updateOngProfile(
 
   if (resolvedLat === null || resolvedLng === null) {
     return {
-      error:
-        "Confirma la ubicacion con Buscar por direccion o Usar mi ubicacion.",
+      error: t.profile.messages.locationRequired,
     } satisfies ProfileState;
   }
 
@@ -296,7 +301,7 @@ export async function updateOngProfile(
   } else if (signatureInput !== existingOrg?.signature_data_url) {
     const parsedSignature = parseImageDataUrl(signatureInput);
     if (!parsedSignature) {
-      return { error: "Firma invalida" } satisfies ProfileState;
+      return { error: t.profile.messages.signatureInvalid } satisfies ProfileState;
     }
     const extension = parsedSignature.mime === "image/png" ? "png" : "jpg";
     const signatureName = `${user.id}/${Date.now()}-${crypto
@@ -310,7 +315,7 @@ export async function updateOngProfile(
       });
 
     if (uploadError) {
-      return { error: "No se pudo guardar la firma" } satisfies ProfileState;
+      return { error: t.profile.messages.signatureSaveFailed } satisfies ProfileState;
     }
     signaturePath = signatureName;
   }
@@ -338,11 +343,11 @@ export async function updateOngProfile(
 
   if (error) {
     return {
-      error: error.message || "No se pudo guardar el perfil",
+      error: error.message || t.profile.messages.saveFailed,
     } satisfies ProfileState;
   }
 
   revalidatePath("/ong");
   revalidatePath("/ong/configuracion");
-  return { success: "Perfil actualizado" } satisfies ProfileState;
+  return { success: t.profile.messages.updated } satisfies ProfileState;
 }

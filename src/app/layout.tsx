@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import { Bricolage_Grotesque, Fraunces } from "next/font/google";
 import "./globals.css";
 import "leaflet/dist/leaflet.css";
+import { getLocaleFromCookies } from "@/lib/i18n";
 
 const bodyFont = Bricolage_Grotesque({
   subsets: ["latin"],
@@ -21,14 +23,17 @@ export const metadata: Metadata = {
     "Plataforma para redistribuir excedentes con trazabilidad y control.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const cookieStore = await cookies();
+  const locale = getLocaleFromCookies(cookieStore);
+
   return (
     <html
-      lang="es"
+      lang={locale}
       className={`${bodyFont.variable} ${displayFont.variable} h-full antialiased`}
     >
       <head>

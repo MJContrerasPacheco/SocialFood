@@ -3,18 +3,20 @@
 import { useActionState } from "react";
 import DonationForm from "./DonationForm";
 import { createDonation, type DonationState } from "./actions";
+import { useI18n } from "@/components/I18nProvider";
 
 const initialState: DonationState = {};
 
 export default function CreateDonationForm() {
+  const { t } = useI18n();
   const [state, action, pending] = useActionState(createDonation, initialState);
 
   return (
     <DonationForm
-      title="Nueva donacion"
-      subtitle="Publica excedentes con detalles, estado y ventana de recogida."
-      submitLabel="Publicar donacion"
-      pendingLabel="Publicando..."
+      title={t.commerce.forms.createTitle}
+      subtitle={t.commerce.forms.createSubtitle}
+      submitLabel={t.commerce.forms.createSubmit}
+      pendingLabel={t.commerce.forms.createPending}
       action={action}
       pending={pending}
       state={state}

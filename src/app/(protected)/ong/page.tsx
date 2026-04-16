@@ -1,7 +1,9 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { DONATION_CERTIFICATES_TABLE } from "@/lib/constants";
 import { requireApprovedRole } from "@/lib/auth";
 import { createServerSupabase } from "@/lib/supabase/server";
+import { getLocaleFromCookies, getTranslations } from "@/lib/i18n";
 
 type SearchParams = {
   from?: string | string[];
@@ -35,6 +37,8 @@ export default async function OngResumenPage({
 }) {
   const { user, profile } = await requireApprovedRole("ong");
   const supabase = await createServerSupabase();
+  const cookieStore = await cookies();
+  const t = getTranslations(getLocaleFromCookies(cookieStore));
 
   const resolvedParams = (await searchParams) ?? {};
   const getParam = (key: keyof SearchParams) => {
@@ -125,23 +129,23 @@ export default async function OngResumenPage({
     <div className="grid gap-6 sm:gap-8">
       <section className="rounded-3xl border border-white/60 bg-white/80 p-4 shadow-[0_20px_60px_rgba(15,23,42,0.12)] backdrop-blur animate-fade-up sm:p-6">
         <p className="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-600">
-          Panel ONG
+          {t.ong.summary.panelTag}
         </p>
         <h1 className="mt-3 text-xl font-semibold text-slate-900 sm:text-2xl">
-          Hola {profile.name || "ONG"}
+          {t.common.greeting} {profile.name || t.common.fallbackOng}
         </h1>
         <p className="mt-2 text-sm text-slate-600">
-          Consulta el impacto de las recogidas realizadas.
+          {t.ong.summary.subtitle}
         </p>
       </section>
 
       <section className="rounded-3xl border border-white/60 bg-white/80 p-4 shadow-[0_20px_60px_rgba(15,23,42,0.12)] backdrop-blur animate-fade-up-delay-1 sm:p-6">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-lg font-semibold text-slate-900">
-            Estadisticas de recogidas
+            {t.ong.summary.statsTitle}
           </h2>
           <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600 badge-animate">
-            Ultima recogida: {latestCollected?.slice(0, 10) ?? "--"}
+            {t.ong.summary.latestPickupLabel}: {latestCollected?.slice(0, 10) ?? "--"}
           </span>
         </div>
         <form
@@ -149,7 +153,7 @@ export default async function OngResumenPage({
           method="get"
         >
           <label className="grid gap-2">
-            Desde
+            {t.common.from}
             <input
               type="date"
               name="from"
@@ -158,7 +162,7 @@ export default async function OngResumenPage({
             />
           </label>
           <label className="grid gap-2">
-            Hasta
+            {t.common.to}
             <input
               type="date"
               name="to"
@@ -170,36 +174,44 @@ export default async function OngResumenPage({
             type="submit"
             className="h-10 w-full rounded-full border border-slate-200 bg-slate-900 px-4 text-xs font-semibold text-white btn-glow-dark flex items-center justify-center leading-none sm:justify-self-end sm:w-auto"
           >
-            Aplicar filtros
+            {t.common.applyFilters}
           </button>
           <Link
             href="/ong"
             className="h-10 w-full rounded-full border border-slate-200 bg-white px-4 text-xs font-semibold text-slate-700 btn-glow-soft flex items-center justify-center leading-none sm:justify-self-end sm:w-auto"
           >
-            Limpiar
+            {t.common.clear}
           </Link>
         </form>
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <div className="rounded-2xl border border-slate-100 bg-white p-4">
-            <p className="text-xs uppercase text-slate-400">Recogidas</p>
+            <p className="text-xs uppercase text-slate-400">
+              {t.ong.summary.totals.pickups}
+            </p>
             <p className="text-2xl font-semibold text-slate-900">
               {items.length}
             </p>
           </div>
           <div className="rounded-2xl border border-slate-100 bg-white p-4">
-            <p className="text-xs uppercase text-slate-400">Kg recuperados</p>
+            <p className="text-xs uppercase text-slate-400">
+              {t.ong.summary.totals.kgRecovered}
+            </p>
             <p className="text-2xl font-semibold text-slate-900">
               {totalKg.toFixed(1)} kg
             </p>
           </div>
           <div className="rounded-2xl border border-slate-100 bg-white p-4">
-            <p className="text-xs uppercase text-slate-400">Comercios activos</p>
+            <p className="text-xs uppercase text-slate-400">
+              {t.ong.summary.totals.activeCommerces}
+            </p>
             <p className="text-2xl font-semibold text-slate-900">
               {commerceNames.size}
             </p>
           </div>
           <div className="rounded-2xl border border-slate-100 bg-white p-4">
-            <p className="text-xs uppercase text-slate-400">Raciones estimadas</p>
+            <p className="text-xs uppercase text-slate-400">
+              {t.ong.summary.totals.estimatedRations}
+            </p>
             <p className="text-2xl font-semibold text-slate-900">
               {Math.max(0, Math.round(totalKg * 2))}
             </p>
@@ -209,10 +221,10 @@ export default async function OngResumenPage({
         <div className="mt-6 rounded-2xl border border-slate-100 bg-white p-4">
           <div className="flex items-center justify-between">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
-              Kg diarios (14 dias)
+              {t.ong.summary.dailyKgTitle}
             </p>
             <span className="text-xs text-slate-500">
-              Total: {totalKg.toFixed(1)} kg
+              {t.ong.summary.totalLabel}: {totalKg.toFixed(1)} kg
             </span>
           </div>
           <div className="mt-3 grid grid-cols-[repeat(auto-fit,minmax(12px,1fr))] gap-2">
@@ -242,10 +254,10 @@ export default async function OngResumenPage({
       <section className="rounded-3xl border border-white/60 bg-white/80 p-4 shadow-[0_20px_60px_rgba(15,23,42,0.12)] backdrop-blur animate-fade-up-delay-2 sm:p-6">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-lg font-semibold text-slate-900">
-            Recogidas recientes
+            {t.ong.summary.recentTitle}
           </h2>
           <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 badge-animate">
-            {items.length} registros
+            {items.length} {t.ong.summary.recordsLabel}
           </span>
         </div>
         <div className="mt-4 grid gap-3">
@@ -259,17 +271,19 @@ export default async function OngResumenPage({
                 >
                   <div>
                     <p className="font-semibold text-slate-900">
-                      {snapshot?.donation?.title || "Excedente"}
+                      {snapshot?.donation?.title || t.verification.surplusLabel}
                     </p>
                     <p className="text-xs text-slate-500">
-                      Comercio: {snapshot?.commerce?.name || "No informado"}
+                      {t.ong.summary.commerceLabel}: {snapshot?.commerce?.name || t.common.unknown}
                     </p>
                     <p className="text-xs text-slate-500">
-                      Recogida: {item.collected_at?.slice(0, 10) || "--"}
+                      {t.ong.summary.pickupLabel}: {item.collected_at?.slice(0, 10) || "--"}
                     </p>
                   </div>
                   <div>
-                    <p className="text-xs uppercase text-slate-400">Kg</p>
+                    <p className="text-xs uppercase text-slate-400">
+                      {t.ong.summary.kgLabel}
+                    </p>
                     <p className="font-semibold">
                       {Number(snapshot?.donation?.kg ?? 0).toFixed(1)} kg
                     </p>
@@ -279,7 +293,7 @@ export default async function OngResumenPage({
             })
           ) : (
             <p className="text-sm text-slate-500">
-              Aun no tienes recogidas registradas.
+              {t.ong.summary.recentEmpty}
             </p>
           )}
         </div>

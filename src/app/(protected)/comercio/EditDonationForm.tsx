@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import DonationForm from "./DonationForm";
 import { updateDonation, type DonationState } from "./actions";
+import { useI18n } from "@/components/I18nProvider";
 
 type EditDonationFormProps = {
   donationId: string;
@@ -25,14 +26,15 @@ export default function EditDonationForm({
   donationId,
   initialValues,
 }: EditDonationFormProps) {
+  const { t } = useI18n();
   const [state, action, pending] = useActionState(updateDonation, initialState);
 
   return (
     <DonationForm
-      title="Editar excedente"
-      subtitle="Solo puedes editar excedentes que aun estan libres."
-      submitLabel="Guardar cambios"
-      pendingLabel="Guardando..."
+      title={t.commerce.forms.editTitle}
+      subtitle={t.commerce.forms.editSubtitle}
+      submitLabel={t.commerce.forms.editSubmit}
+      pendingLabel={t.commerce.forms.editPending}
       action={action}
       pending={pending}
       state={state}

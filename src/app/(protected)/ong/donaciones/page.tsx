@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
 import {
   DONACIONES_TABLE,
   ORGANIZATIONS_PUBLIC_TABLE,
@@ -7,6 +8,7 @@ import { requireApprovedRole } from "@/lib/auth";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { formatDonationStatus } from "@/lib/donations";
 import { haversineKm, hasValidCoordinates, normalizeCoordinate } from "@/lib/geo";
+import { getLocaleFromCookies, getTranslations } from "@/lib/i18n";
 import OngMap from "../OngMap";
 import { requestDonation } from "../actions";
 
@@ -47,6 +49,8 @@ export default async function OngDonacionesPage({
 }) {
   const { user, profile } = await requireApprovedRole("ong");
   const supabase = await createServerSupabase();
+  const cookieStore = await cookies();
+  const t = getTranslations(getLocaleFromCookies(cookieStore));
 
   const resolvedParams = (await searchParams) ?? {};
   const sortValue = Array.isArray(resolvedParams.sort)
@@ -123,7 +127,7 @@ export default async function OngDonacionesPage({
     .filter((org) => hasValidCoordinates(org.lat, org.lng))
     .map((org) => ({
       id: org.user_id,
-      title: org.name || "Comercio",
+      title: org.name || t.ong.donations.commerceLabel,
       lat: org.lat as number,
       lng: org.lng as number,
     }));
@@ -132,13 +136,13 @@ export default async function OngDonacionesPage({
     <div className="grid gap-6 sm:gap-8">
       <section className="rounded-3xl border border-white/60 bg-white/80 p-4 shadow-[0_20px_60px_rgba(15,23,42,0.12)] backdrop-blur animate-fade-up sm:p-6">
         <p className="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-600">
-          Donaciones disponibles
+          {t.ong.donations.panelTag}
         </p>
         <h1 className="mt-3 text-xl font-semibold text-slate-900 sm:text-2xl">
-          Encuentra excedentes cercanos
+          {t.ong.donations.title}
         </h1>
         <p className="mt-2 text-sm text-slate-600">
-          Ordena por distancia o fecha para priorizar las recogidas.
+          {t.ong.donations.subtitle}
         </p>
       </section>
 
@@ -151,7 +155,7 @@ export default async function OngDonacionesPage({
         />
         {!hasValidCoordinates(ongLat, ongLng) ? (
           <p className="mt-3 text-xs text-slate-500">
-            Completa tu ubicacion en configuracion para ordenar por cercania.
+            {t.ong.donations.mapMissingLocation}
           </p>
         ) : null}
       </section>
@@ -162,30 +166,38 @@ export default async function OngDonacionesPage({
           className="grid gap-3 text-xs text-slate-600 sm:grid-cols-[minmax(0,1fr)_auto_auto]"
         >
           <label className="grid gap-2">
-            Ordenar
+            {t.ong.donations.sortLabel}
             <select
               name="sort"
               defaultValue={sortValue}
               className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900"
             >
-              <option value="distance_asc">Mas cercanas</option>
-              <option value="distance_desc">Mas lejanas</option>
-              <option value="created_desc">Mas recientes</option>
-              <option value="created_asc">Mas antiguas</option>
-              <option value="kg_desc">Mas kg</option>
+              <option value="distance_asc">
+                {t.ong.donations.sortOptions.distanceAsc}
+              </option>
+              <option value="distance_desc">
+                {t.ong.donations.sortOptions.distanceDesc}
+              </option>
+              <option value="created_desc">
+                {t.ong.donations.sortOptions.recent}
+              </option>
+              <option value="created_asc">
+                {t.ong.donations.sortOptions.oldest}
+              </option>
+              <option value="kg_desc">{t.ong.donations.sortOptions.mostKg}</option>
             </select>
           </label>
           <button
             type="submit"
             className="h-10 w-full rounded-full border border-slate-200 bg-slate-900 px-4 text-xs font-semibold text-white btn-glow-dark flex items-center justify-center leading-none sm:justify-self-end sm:w-auto"
           >
-            Aplicar
+            {t.ong.donations.applyLabel}
           </button>
           <Link
             href="/ong/donaciones"
             className="h-10 w-full rounded-full border border-slate-200 bg-white px-4 text-xs font-semibold text-slate-700 btn-glow-soft flex items-center justify-center leading-none sm:justify-self-end sm:w-auto"
           >
-            Limpiar
+            {t.ong.donations.clearLabel}
           </Link>
         </form>
       </section>
@@ -193,10 +205,10 @@ export default async function OngDonacionesPage({
       <section className="rounded-3xl border border-white/60 bg-white/80 p-4 shadow-[0_20px_60px_rgba(15,23,42,0.12)] backdrop-blur animate-fade-up-delay-2 sm:p-6">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-lg font-semibold text-slate-900">
-            Donaciones disponibles
+            {t.ong.donations.listTitle}
           </h2>
           <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 badge-animate">
-            {sortedDonations.length} opciones
+            {sortedDonations.length} {t.ong.donations.optionsLabel}
           </span>
         </div>
         <div className="mt-4 grid gap-3 sm:gap-4">
@@ -212,10 +224,10 @@ export default async function OngDonacionesPage({
                     {donation.title}
                   </p>
                   <p className="text-xs text-slate-500">
-                    Estado: {formatDonationStatus(donation.status)}
+                    {t.ong.donations.statusLabel}: {formatDonationStatus(donation.status, t.status)}
                   </p>
                   <p className="text-xs text-slate-500">
-                    Comercio: {donation.org?.name || "No informado"}
+                    {t.ong.donations.commerceLabel}: {donation.org?.name || t.ong.donations.fallbackCommerceName}
                   </p>
                   {donation.org?.city && (
                     <p className="text-xs text-slate-500">
@@ -224,17 +236,17 @@ export default async function OngDonacionesPage({
                   )}
                   {donation.distanceKm !== null && (
                     <p className="text-xs text-emerald-600">
-                      A {donation.distanceKm.toFixed(1)} km
+                      {t.ong.donations.distancePrefix} {donation.distanceKm.toFixed(1)} km
                     </p>
                   )}
                   {donation.pickup_window ? (
                     <p className="text-xs text-slate-500">
-                      Recogida: {donation.pickup_window}
+                      {t.ong.donations.pickupLabel}: {donation.pickup_window}
                     </p>
                   ) : null}
                 </div>
                 <div>
-                  <p className="text-xs uppercase text-slate-400">Cantidad</p>
+                  <p className="text-xs uppercase text-slate-400">{t.common.quantity}</p>
                   <p className="font-semibold">{donation.kg ?? 0} kg</p>
                 </div>
                 <form action={requestDonation}>
@@ -243,14 +255,14 @@ export default async function OngDonacionesPage({
                     type="submit"
                     className="rounded-full bg-emerald-600 px-4 py-2 text-xs font-semibold text-white btn-glow"
                   >
-                    Solicitar
+                    {t.ong.donations.requestAction}
                   </button>
                 </form>
               </div>
             ))
           ) : (
             <p className="text-sm text-slate-500">
-              No hay donaciones disponibles en este momento.
+              {t.ong.donations.empty}
             </p>
           )}
         </div>
@@ -258,8 +270,8 @@ export default async function OngDonacionesPage({
 
       <section className="rounded-3xl border border-emerald-100 bg-emerald-50/70 p-4 text-sm text-emerald-700 sm:p-5">
         <p>
-          Hola {profile.name || "ONG"}, usa el mapa para detectar comercios
-          cercanos y priorizar recogidas.
+          {t.common.greeting} {profile.name || t.common.fallbackOng},{" "}
+          {t.ong.donations.footer}
         </p>
       </section>
     </div>
